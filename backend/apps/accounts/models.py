@@ -20,7 +20,7 @@ class User(AbstractUser):
     doctors, support staff and administrators.
 
     Authentication does not automatically grant access to a clinic
-    or patient record. Authorization will be handled separately.
+    or patient record. Authorization is handled separately.
     """
 
     id = models.UUIDField(
@@ -28,13 +28,11 @@ class User(AbstractUser):
         default=uuid.uuid4,
         editable=False,
     )
-
     email = models.EmailField(
         unique=True,
         blank=True,
         null=True,
     )
-
     phone_number = models.CharField(
         max_length=16,
         unique=True,
@@ -42,22 +40,20 @@ class User(AbstractUser):
         null=True,
         validators=[phone_validator],
     )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True,
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "accounts_user"
         ordering = ["-date_joined"]
 
+    def save(self, *args, **kwargs):
+        """Store omitted unique contacts as NULL, not empty strings."""
+        if not self.email:
+            self.email = None
+        if not self.phone_number:
+            self.phone_number = None
+        super().save(*args, **kwargs)
+
     def __str__(self) -> str:
-        return (
-            self.email
-            or self.phone_number
-            or self.username
-        )
+        return self.email or self.phone_number or self.username

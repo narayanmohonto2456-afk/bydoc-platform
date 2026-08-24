@@ -49,6 +49,7 @@ LOCAL_APPS = [
     "apps.core.apps.CoreConfig",
     "apps.organizations.apps.OrganizationsConfig",
     "apps.clinics",
+    "apps.doctors",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
