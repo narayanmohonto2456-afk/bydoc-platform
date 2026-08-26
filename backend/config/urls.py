@@ -8,4 +8,8 @@ urlpatterns = [
         "health/",
         include("apps.core.urls"),
     ),
+    path(
+    "api/v1/appointments/",
+    include("apps.appointments.urls"),
+),
 ]
