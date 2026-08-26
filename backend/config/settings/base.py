@@ -50,6 +50,7 @@ LOCAL_APPS = [
     "apps.organizations.apps.OrganizationsConfig",
     "apps.clinics",
     "apps.doctors",
+    "apps.appointments",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -194,3 +195,6 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = "UTC"
+
+
+APPOINTMENT_HOLD_MINUTES = 5
