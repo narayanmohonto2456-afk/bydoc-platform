@@ -22,7 +22,32 @@ from .models import (
 )
 
 
+def _schedule_created_notifications_after_commit(
+    appointment_id,
+):
+    from apps.notifications.hooks import (
+        schedule_created_notifications,
+    )
 
+    transaction.on_commit(
+        lambda: schedule_created_notifications(
+            appointment_id
+        )
+    )
+
+
+def _schedule_cancellation_notification_after_commit(
+    appointment_id,
+):
+    from apps.notifications.hooks import (
+        schedule_cancellation_notification,
+    )
+
+    transaction.on_commit(
+        lambda: schedule_cancellation_notification(
+            appointment_id
+        )
+    )
 
 
 class AppointmentBookingError(Exception):
@@ -160,6 +185,9 @@ def book_held_slot(
     PostgreSQL locks the slot row until the transaction finishes.
     The booking_request_id makes repeated confirmation requests
     idempotent.
+
+    Notification outbox records are scheduled only after the
+    booking transaction commits successfully.
     """
     _validate_authenticated_user(patient, "patient")
     _validate_authenticated_user(
@@ -174,7 +202,11 @@ def book_held_slot(
             booking_request_id = uuid.UUID(
                 str(booking_request_id)
             )
-        except (TypeError, ValueError, AttributeError) as error:
+        except (
+            TypeError,
+            ValueError,
+            AttributeError,
+        ) as error:
             raise AppointmentBookingError(
                 "The booking request identifier is invalid."
             ) from error
@@ -204,12 +236,19 @@ def book_held_slot(
     if existing_appointment is not None:
         same_booking_request = (
             existing_appointment.slot_id == slot.pk
-            and existing_appointment.patient_id == patient.pk
+            and existing_appointment.patient_id
+            == patient.pk
             and existing_appointment.booked_by_id
             == booked_by.pk
         )
 
         if same_booking_request:
+            # The deduplication keys prevent duplicate
+            # notification records during booking retries.
+            _schedule_created_notifications_after_commit(
+                existing_appointment.pk
+            )
+
             return existing_appointment
 
         raise AppointmentBookingError(
@@ -264,6 +303,10 @@ def book_held_slot(
             "hold_expires_at",
             "updated_at",
         ]
+    )
+
+    _schedule_created_notifications_after_commit(
+        appointment.pk
     )
 
     return appointment
@@ -469,8 +512,8 @@ def cancel_appointment(
     """
     Cancel a confirmed appointment with row-level locking.
 
-    Repeated cancellation requests are idempotent: cancelling an
-    already-cancelled appointment returns the existing appointment.
+    Repeated cancellation requests are idempotent. Cancellation
+    notifications are scheduled only after the transaction commits.
     """
     _validate_authenticated_user(
         cancelled_by,
@@ -521,6 +564,12 @@ def cancel_appointment(
         )
 
     if appointment.status == Appointment.Status.CANCELLED:
+        # Retrying cancellation is safe. Deduplication prevents
+        # duplicate cancellation notifications.
+        _schedule_cancellation_notification_after_commit(
+            appointment.pk
+        )
+
         return appointment
 
     if appointment.status != Appointment.Status.CONFIRMED:
@@ -532,7 +581,8 @@ def cancel_appointment(
 
     if len(cancellation_note) > 250:
         raise AppointmentBookingError(
-            "The cancellation note cannot exceed 250 characters."
+            "The cancellation note cannot exceed "
+            "250 characters."
         )
 
     slot = (
@@ -591,6 +641,10 @@ def cancel_appointment(
             "hold_expires_at",
             "updated_at",
         ]
+    )
+
+    _schedule_cancellation_notification_after_commit(
+        appointment.pk
     )
 
     return appointment
