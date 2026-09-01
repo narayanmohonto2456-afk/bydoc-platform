@@ -51,6 +51,7 @@ LOCAL_APPS = [
     "apps.clinics",
     "apps.doctors",
     "apps.appointments",
+    "apps.notifications",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -195,6 +196,23 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = "UTC"
+
+CELERY_BEAT_SCHEDULE = {
+    "dispatch-due-notifications-every-minute": {
+        "task": (
+            "notifications.dispatch_due_notifications"
+        ),
+        "schedule": 60.0,
+        "args": (100,),
+    },
+    "recover-stale-notifications-every-five-minutes": {
+        "task": (
+            "notifications.recover_stale_notifications"
+        ),
+        "schedule": 300.0,
+        "args": (100, 15),
+    },
+}
 
 
 APPOINTMENT_HOLD_MINUTES = 5
