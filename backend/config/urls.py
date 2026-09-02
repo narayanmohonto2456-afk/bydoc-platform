@@ -12,4 +12,8 @@ urlpatterns = [
     "api/v1/appointments/",
     include("apps.appointments.urls"),
 ),
+    path(
+    "api/v1/notifications/",
+    include("apps.notifications.urls"),
+),
 ]

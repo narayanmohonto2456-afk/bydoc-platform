@@ -371,3 +371,82 @@ class NotificationDeliveryAttempt(models.Model):
             f"{self.notification_id} "
             f"attempt {self.attempt_number}"
         )
+
+class InAppNotificationQuerySet(models.QuerySet):
+    def for_recipient(self, recipient):
+        return self.filter(
+            outbox__recipient=recipient,
+            outbox__channel=(
+                NotificationOutbox.Channel.IN_APP
+            ),
+            outbox__status=NotificationOutbox.Status.SENT,
+        )
+
+    def unread(self):
+        return self.filter(read_at__isnull=True)
+
+
+class InAppNotification(models.Model):
+    """
+    Patient-visible inbox record for a delivered in-app
+    notification.
+
+    Delivery state remains in NotificationOutbox. This model only
+    tracks inbox creation and whether the recipient has read it.
+    """
+
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+    )
+
+    outbox = models.OneToOneField(
+        NotificationOutbox,
+        on_delete=models.PROTECT,
+        related_name="in_app_notification",
+    )
+
+    read_at = models.DateTimeField(
+        blank=True,
+        null=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    objects = InAppNotificationQuerySet.as_manager()
+
+    class Meta:
+        db_table = "notifications_in_app"
+        ordering = ["-created_at"]
+
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(read_at__isnull=True)
+                    | Q(read_at__gte=F("created_at"))
+                ),
+                name="in_app_read_after_creation",
+            ),
+        ]
+
+        indexes = [
+            models.Index(
+                fields=["read_at", "created_at"],
+                name="in_app_notification_read_idx",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        state = (
+            "read"
+            if self.read_at is not None
+            else "unread"
+        )
+
+        return (
+            f"In-app notification {self.pk} "
+            f"({state})"
+        )
