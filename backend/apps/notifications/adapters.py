@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from .models import NotificationOutbox
+from .models import (
+    InAppNotification,
+    NotificationOutbox,
+)
 
 
 @dataclass(frozen=True)
@@ -50,11 +53,11 @@ class NotificationDeliveryAdapter(Protocol):
 
 class InAppDeliveryAdapter:
     """
-    Mark an in-app notification as available.
+    Create a patient-visible inbox record idempotently.
 
-    The outbox record itself contains the notification that a
-    future authenticated inbox API can display. No external
-    service or network request is required.
+    If a worker crashes after creating the inbox item but before
+    marking the outbox item sent, a retry returns the same inbox
+    record instead of creating a duplicate.
     """
 
     name = "in_app"
@@ -70,6 +73,10 @@ class InAppDeliveryAdapter:
             raise PermanentDeliveryError(
                 "The in-app adapter cannot deliver this channel."
             )
+
+        InAppNotification.objects.get_or_create(
+            outbox=notification
+        )
 
         return DeliveryResult(
             external_reference=(
