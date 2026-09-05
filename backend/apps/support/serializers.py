@@ -93,7 +93,7 @@ class SupportCaseEventSerializer(
         )
         read_only_fields = fields
 
-    def get_actor_role(self, event):
+    def get_actor_role(self, event) -> str:
         if event.actor_id is None:
             return "system"
 

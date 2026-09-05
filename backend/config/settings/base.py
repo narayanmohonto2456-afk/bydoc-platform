@@ -53,6 +53,7 @@ LOCAL_APPS = [
     "apps.appointments",
     "apps.notifications",
     "apps.support.apps.SupportConfig",
+    "apps.preferences.apps.PreferencesConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -62,9 +63,14 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    (
+        "apps.preferences.middleware."
+        "UserPreferenceLocaleMiddleware"
+    ),
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -135,10 +141,22 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "en"
+
+LANGUAGES = (
+    ("en", "English"),
+    ("bn", "বাংলা"),
+    ("hi", "हिन्दी"),
+)
+
 TIME_ZONE = "UTC"
+
 USE_I18N = True
 USE_TZ = True
+
+LOCALE_PATHS = [
+    BASE_DIR / "locale",
+]
 
 
 STATIC_URL = "static/"
@@ -167,11 +185,24 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "SehatSaathi API",
-    "DESCRIPTION": (
-        "Healthcare discovery and outpatient appointment API."
-    ),
+    "DESCRIPTION": "SehatSaathi platform API",
     "VERSION": "1.0.0",
-    "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {
+        "AppointmentStatusEnum": [
+            ("confirmed", "Confirmed"),
+            ("checked_in", "Checked in"),
+            ("completed", "Completed"),
+            ("cancelled", "Cancelled"),
+            ("no_show", "No show"),
+        ],
+        "SupportCaseStatusEnum": [
+            ("open", "Open"),
+            ("in_progress", "In progress"),
+            ("waiting_for_user", "Waiting for user"),
+            ("resolved", "Resolved"),
+            ("closed", "Closed"),
+        ],
+    },
 }
 
 

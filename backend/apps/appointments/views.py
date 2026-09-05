@@ -31,7 +31,7 @@ from .services import (
     cancel_appointment,
     hold_slot,
 )
-
+from drf_spectacular.utils import extend_schema
 
 def parse_uuid_parameter(value, parameter_name):
     try:
@@ -171,9 +171,14 @@ class PublicSlotListView(generics.ListAPIView):
         return queryset
 
 
-class HoldSlotView(APIView):
+class HoldSlotView(generics.GenericAPIView):
     permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = SlotHoldSerializer
 
+    @extend_schema(
+        request=None,
+        responses=SlotHoldSerializer,
+    )
     def post(self, request, slot_id):
         try:
             slot = hold_slot(
@@ -202,9 +207,14 @@ class HoldSlotView(APIView):
         )
 
 
-class BookSlotView(APIView):
+class BookSlotView(generics.GenericAPIView):
     permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = BookAppointmentSerializer
 
+    @extend_schema(
+        request=BookAppointmentSerializer,
+        responses=AppointmentSerializer,
+    )
     def post(self, request, slot_id):
         serializer = BookAppointmentSerializer(
             data=request.data
@@ -276,9 +286,16 @@ class MyAppointmentListView(generics.ListAPIView):
         )
 
 
-class CancelAppointmentView(APIView):
+class CancelAppointmentView(
+    generics.GenericAPIView
+):
     permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = CancelAppointmentSerializer
 
+    @extend_schema(
+        request=CancelAppointmentSerializer,
+        responses=AppointmentSerializer,
+    )
     def post(self, request, appointment_id):
         serializer = CancelAppointmentSerializer(
             data=request.data
