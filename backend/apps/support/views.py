@@ -7,7 +7,6 @@ from rest_framework import (
     status,
 )
 from rest_framework.response import Response
-from rest_framework.views import APIView
 
 from apps.appointments.models import Appointment
 from apps.clinics.models import Clinic
@@ -30,6 +29,7 @@ from .services import (
     change_support_case_status,
     create_support_case,
 )
+from drf_spectacular.utils import extend_schema
 
 
 User = get_user_model()
@@ -54,9 +54,16 @@ def support_error_response(error):
     )
 
 
-class SupportCaseListCreateView(APIView):
+class SupportCaseListCreateView(
+    generics.GenericAPIView
+):
     permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = CreateSupportCaseSerializer
 
+    @extend_schema(
+        operation_id="support_case_list",
+        responses=SupportCaseListSerializer(many=True),
+    )
     def get(self, request):
         queryset = (
             SupportCase.objects
@@ -77,6 +84,20 @@ class SupportCaseListCreateView(APIView):
             serializer.data,
             status=status.HTTP_200_OK,
         )
+    @extend_schema(
+        operation_id="support_case_create",
+        request=CreateSupportCaseSerializer,
+        responses={
+            201: SupportCaseDetailSerializer,
+        },
+    )
+    @extend_schema(
+        operation_id="support_case_create",
+        request=CreateSupportCaseSerializer,
+        responses={
+            201: SupportCaseDetailSerializer,
+        },
+    )
 
     def post(self, request):
         serializer = CreateSupportCaseSerializer(
@@ -202,9 +223,17 @@ class SupportCaseDetailView(
         )
 
 
-class SupportCaseCommentView(APIView):
+class SupportCaseCommentView(
+    generics.GenericAPIView
+):
     permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = AddSupportCaseCommentSerializer
 
+    @extend_schema(
+        operation_id="support_case_comment",
+        request=AddSupportCaseCommentSerializer,
+        responses=SupportCaseDetailSerializer,
+    )
     def post(self, request, case_id):
         serializer = AddSupportCaseCommentSerializer(
             data=request.data
@@ -253,9 +282,17 @@ class SupportCaseCommentView(APIView):
         )
 
 
-class StaffSupportCaseAssignView(APIView):
+class StaffSupportCaseAssignView(
+    generics.GenericAPIView
+):
     permission_classes = (permissions.IsAdminUser,)
+    serializer_class = StaffAssignSupportCaseSerializer
 
+    @extend_schema(
+        operation_id="support_case_staff_assign",
+        request=StaffAssignSupportCaseSerializer,
+        responses=SupportCaseDetailSerializer,
+    )
     def post(self, request, case_id):
         serializer = StaffAssignSupportCaseSerializer(
             data=request.data
@@ -313,9 +350,19 @@ class StaffSupportCaseAssignView(APIView):
         )
 
 
-class StaffSupportCaseStatusView(APIView):
+class StaffSupportCaseStatusView(
+    generics.GenericAPIView
+):
     permission_classes = (permissions.IsAdminUser,)
+    serializer_class = (
+        StaffChangeSupportCaseStatusSerializer
+    )
 
+    @extend_schema(
+        operation_id="support_case_staff_status",
+        request=StaffChangeSupportCaseStatusSerializer,
+        responses=SupportCaseDetailSerializer,
+    )
     def post(self, request, case_id):
         serializer = (
             StaffChangeSupportCaseStatusSerializer(

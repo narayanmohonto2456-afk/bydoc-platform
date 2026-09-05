@@ -20,4 +20,8 @@ urlpatterns = [
     "api/v1/support/",
     include("apps.support.urls"),
 ),
+    path(
+    "api/v1/preferences/",
+    include("apps.preferences.urls"),
+),
 ]

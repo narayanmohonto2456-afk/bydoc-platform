@@ -49,7 +49,7 @@ class InAppNotificationSerializer(
         )
         read_only_fields = fields
 
-    def get_is_read(self, obj):
+    def get_is_read(self, obj) -> bool:
         return obj.read_at is not None
 
 class UnreadCountSerializer(serializers.Serializer):
