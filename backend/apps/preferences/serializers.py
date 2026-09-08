@@ -2,11 +2,20 @@ from django.conf import settings
 from rest_framework import serializers
 
 from .models import UserPreference
+from django.utils.translation import gettext_lazy as _
 
 
 class UserPreferenceSerializer(
     serializers.ModelSerializer
 ):
+
+    preferred_language = serializers.ChoiceField(
+        choices=UserPreference.Language.choices,
+        required=False,
+        error_messages={
+            "invalid_choice": _("This language is not supported."),
+        },
+    )
     language_name = serializers.SerializerMethodField()
 
     class Meta:
@@ -43,7 +52,7 @@ class UserPreferenceSerializer(
 
         if value not in supported_languages:
             raise serializers.ValidationError(
-                "This language is not supported."
+                _("This language is not supported.")
             )
 
         return value

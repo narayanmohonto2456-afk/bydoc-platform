@@ -54,8 +54,9 @@ class UserPreferenceLocaleMiddleware:
             response = self.get_response(request)
 
             if selected_language is not None:
-                response["Content-Language"] = (
-                    selected_language
+                response.setdefault(
+                    "Content-Language",
+                    selected_language,
                 )
 
             return response
