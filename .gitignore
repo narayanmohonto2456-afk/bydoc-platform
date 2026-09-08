@@ -69,3 +69,5 @@ temp/
 *.tmp
 *.swp
 *.swo
+# Compiled gettext catalogs; rebuilt during CI and deployment
+*.mo
