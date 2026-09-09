@@ -1,4 +1,6 @@
-import logging
+"""Persist notification requests; never perform delivery here."""
+
+from django.db import transaction
 
 from apps.appointments.models import Appointment
 
@@ -6,9 +8,6 @@ from .services import (
     enqueue_appointment_cancellation,
     enqueue_appointment_created_notifications,
 )
-
-
-logger = logging.getLogger(__name__)
 
 
 def _get_appointment(appointment_id):
@@ -25,43 +24,23 @@ def _get_appointment(appointment_id):
     )
 
 
+@transaction.atomic
 def schedule_created_notifications(appointment_id):
+    """Join the booking transaction and let persistence errors propagate.
+
+    The periodic dispatcher delivers committed outbox rows through Celery.
+    Call this directly inside the booking transaction, not in on_commit.
     """
-    Schedule confirmation and reminder after booking commits.
-
-    Exceptions are logged because notification failure must never
-    make a successfully committed booking appear unsuccessful.
-    """
-    try:
-        appointment = _get_appointment(appointment_id)
-
-        if appointment.status != Appointment.Status.CONFIRMED:
-            return
-
-        enqueue_appointment_created_notifications(
-            appointment
-        )
-    except Exception:
-        logger.exception(
-            "Unable to schedule notifications for appointment %s.",
-            appointment_id,
-        )
+    appointment = _get_appointment(appointment_id)
+    if appointment.status != Appointment.Status.CONFIRMED:
+        return
+    return enqueue_appointment_created_notifications(appointment)
 
 
+@transaction.atomic
 def schedule_cancellation_notification(appointment_id):
-    """
-    Schedule cancellation notification after cancellation commits.
-    """
-    try:
-        appointment = _get_appointment(appointment_id)
-
-        if appointment.status != Appointment.Status.CANCELLED:
-            return
-
-        enqueue_appointment_cancellation(appointment)
-    except Exception:
-        logger.exception(
-            "Unable to schedule cancellation notification "
-            "for appointment %s.",
-            appointment_id,
-        )
+    """Cancel pending reminders and record the notice in the caller's transaction."""
+    appointment = _get_appointment(appointment_id)
+    if appointment.status != Appointment.Status.CANCELLED:
+        return
+    return enqueue_appointment_cancellation(appointment)

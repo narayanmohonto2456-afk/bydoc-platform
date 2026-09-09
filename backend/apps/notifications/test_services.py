@@ -192,12 +192,11 @@ def test_reminder_is_scheduled_24_hours_before_appointment():
 
 
 def test_short_notice_reminder_is_scheduled_immediately():
+    before = timezone.now()
     appointment = create_confirmed_appointment(
         hours_from_now=2,
         patient_username="short-notice-patient",
     )
-
-    before = timezone.now()
 
     reminder = enqueue_appointment_reminder(
         appointment

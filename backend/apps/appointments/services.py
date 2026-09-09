@@ -22,32 +22,24 @@ from .models import (
 )
 from django.utils.translation import gettext as _
 
-def _schedule_created_notifications_after_commit(
+def _persist_created_notifications(
     appointment_id,
 ):
     from apps.notifications.hooks import (
         schedule_created_notifications,
     )
 
-    transaction.on_commit(
-        lambda: schedule_created_notifications(
-            appointment_id
-        )
-    )
+    schedule_created_notifications(appointment_id)
 
 
-def _schedule_cancellation_notification_after_commit(
+def _persist_cancellation_notification(
     appointment_id,
 ):
     from apps.notifications.hooks import (
         schedule_cancellation_notification,
     )
 
-    transaction.on_commit(
-        lambda: schedule_cancellation_notification(
-            appointment_id
-        )
-    )
+    schedule_cancellation_notification(appointment_id)
 
 
 class AppointmentBookingError(Exception):
@@ -257,12 +249,8 @@ def book_held_slot(
         )
 
         if same_booking_request:
-            # The deduplication keys prevent duplicate
-            # notification records during booking retries.
-            _schedule_created_notifications_after_commit(
-                existing_appointment.pk
-            )
-
+            # This booking and its outbox rows were committed together.
+            # Return history without rescheduling reminders for a past booking.
             return existing_appointment
 
         raise AppointmentBookingError(
@@ -321,7 +309,7 @@ def book_held_slot(
         ]
     )
 
-    _schedule_created_notifications_after_commit(
+    _persist_created_notifications(
         appointment.pk
     )
 
@@ -528,8 +516,8 @@ def cancel_appointment(
     """
     Cancel a confirmed appointment with row-level locking.
 
-    Repeated cancellation requests are idempotent. Cancellation
-    notifications are scheduled only after the transaction commits.
+    Repeated cancellation requests are idempotent. Cancellation outbox
+    rows and pending-reminder updates share this transaction.
     """
     _validate_authenticated_user(
         cancelled_by,
@@ -582,7 +570,7 @@ def cancel_appointment(
     if appointment.status == Appointment.Status.CANCELLED:
         # Retrying cancellation is safe. Deduplication prevents
         # duplicate cancellation notifications.
-        _schedule_cancellation_notification_after_commit(
+        _persist_cancellation_notification(
             appointment.pk
         )
 
@@ -661,7 +649,7 @@ def cancel_appointment(
         ]
     )
 
-    _schedule_cancellation_notification_after_commit(
+    _persist_cancellation_notification(
         appointment.pk
     )
 
