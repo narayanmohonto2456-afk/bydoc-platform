@@ -244,10 +244,10 @@ class Appointment(models.Model):
         editable=False,
         help_text="Idempotency key supplied for a booking request.",
     )
-    slot = models.OneToOneField(
+    slot = models.ForeignKey(
         AppointmentSlot,
         on_delete=models.PROTECT,
-        related_name="appointment",
+        related_name="appointments",
     )
     patient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -280,6 +280,11 @@ class Appointment(models.Model):
         db_table = "appointments_appointment"
         ordering = ["-slot__starts_at"]
         constraints = [
+            models.UniqueConstraint(
+                fields=["slot"],
+                condition=~Q(status="cancelled"),
+                name="unique_non_cancelled_slot_appt",
+            ),
             models.CheckConstraint(
                 condition=Q(
                     status__in=[

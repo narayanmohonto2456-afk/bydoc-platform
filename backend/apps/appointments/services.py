@@ -20,7 +20,7 @@ from .models import (
     AvailabilityRule,
     ScheduleException,
 )
-
+from django.utils.translation import gettext as _
 
 def _schedule_created_notifications_after_commit(
     appointment_id,
@@ -64,8 +64,22 @@ class InvalidSlotHoldError(AppointmentBookingError):
 
 def _validate_authenticated_user(user, label):
     if not getattr(user, "is_authenticated", False):
+        messages = {
+            "user": _("An authenticated user is required."),
+            "patient": _("An authenticated patient is required."),
+            "booking user": _(
+                "An authenticated booking user is required."
+            ),
+            "cancelling user": _(
+                "An authenticated cancelling user is required."
+            ),
+        }
+
         raise AppointmentBookingError(
-            f"An authenticated {label} is required."
+            messages.get(
+                label,
+                _("An authenticated user is required."),
+            )
         )
 
 
@@ -79,27 +93,27 @@ def _validate_slot_eligibility(slot):
         != DoctorClinicAffiliation.Status.ACTIVE
     ):
         raise SlotUnavailableError(
-            "The doctor is not active at this clinic."
+            _("The doctor is not active at this clinic.")
         )
 
     if not affiliation.accepts_online_bookings:
         raise SlotUnavailableError(
-            "Online booking is not enabled for this doctor."
+            _("Online booking is not enabled for this doctor.")
         )
 
     if clinic.status != Clinic.Status.ACTIVE:
         raise SlotUnavailableError(
-            "The clinic is not currently active."
+            _("The clinic is not currently active.")
         )
 
     if organization.status != Organization.Status.ACTIVE:
         raise SlotUnavailableError(
-            "The organization is not currently active."
+            _("The organization is not currently active.")
         )
 
     if slot.starts_at <= timezone.now():
         raise SlotUnavailableError(
-            "Past appointment slots cannot be booked."
+            _("Past appointment slots cannot be booked.")
         )
 
 
@@ -133,7 +147,7 @@ def hold_slot(slot_id, held_by):
         AppointmentSlot.Status.BLOCKED,
     }:
         raise SlotUnavailableError(
-            "This appointment slot is unavailable."
+            _("This appointment slot is unavailable.")
         )
 
     if (
@@ -143,7 +157,7 @@ def hold_slot(slot_id, held_by):
         and slot.held_by_id != held_by.pk
     ):
         raise SlotUnavailableError(
-            "This slot is temporarily held by another user."
+            _("This slot is temporarily held by another user.")
         )
 
     hold_minutes = getattr(
@@ -208,7 +222,7 @@ def book_held_slot(
             AttributeError,
         ) as error:
             raise AppointmentBookingError(
-                "The booking request identifier is invalid."
+                _("The booking request identifier is invalid.")
             ) from error
 
     slot = (
@@ -252,8 +266,10 @@ def book_held_slot(
             return existing_appointment
 
         raise AppointmentBookingError(
-            "This booking request identifier "
-            "has already been used."
+            _(
+                "This booking request identifier "
+                "has already been used."
+            )
         )
 
     _validate_slot_eligibility(slot)
@@ -262,17 +278,17 @@ def book_held_slot(
 
     if slot.status != AppointmentSlot.Status.HELD:
         raise InvalidSlotHoldError(
-            "This slot does not have an active hold."
+            _("This slot does not have an active hold.")
         )
 
     if slot.held_by_id != booked_by.pk:
         raise InvalidSlotHoldError(
-            "This slot is held by another user."
+            _("This slot is held by another user.")
         )
 
     if slot.hold_token != hold_token:
         raise InvalidSlotHoldError(
-            "The slot hold token is invalid."
+            _("The slot hold token is invalid.")
         )
 
     if (
@@ -280,7 +296,7 @@ def book_held_slot(
         or slot.hold_expires_at <= now
     ):
         raise InvalidSlotHoldError(
-            "The slot hold has expired."
+            _("The slot hold has expired.")
         )
 
     appointment = Appointment.objects.create(
@@ -349,31 +365,31 @@ def generate_slots_for_date(affiliation, target_date):
         != DoctorClinicAffiliation.Status.ACTIVE
     ):
         raise ScheduleGenerationError(
-            "Slots cannot be generated for an inactive affiliation."
+            _("Slots cannot be generated for an inactive affiliation.")
         )
 
     if not affiliation.accepts_online_bookings:
         raise ScheduleGenerationError(
-            "Online booking is not enabled for this affiliation."
+            _("Online booking is not enabled for this affiliation.")
         )
 
     clinic = affiliation.clinic
 
     if clinic.status != Clinic.Status.ACTIVE:
         raise ScheduleGenerationError(
-            "Slots cannot be generated for an inactive clinic."
+            _("Slots cannot be generated for an inactive clinic.")
         )
 
     if clinic.organization.status != Organization.Status.ACTIVE:
         raise ScheduleGenerationError(
-            "Slots cannot be generated for an inactive organization."
+            _("Slots cannot be generated for an inactive organization.")
         )
 
     try:
         clinic_timezone = ZoneInfo(clinic.timezone)
     except ZoneInfoNotFoundError as error:
         raise ScheduleGenerationError(
-            "The clinic timezone is invalid."
+            _("The clinic timezone is invalid.")
         ) from error
 
     exceptions = list(
@@ -560,7 +576,7 @@ def cancel_appointment(
         or is_active_clinic_staff
     ):
         raise AppointmentAuthorizationError(
-            "You cannot cancel this appointment."
+            _("You cannot cancel this appointment.")
         )
 
     if appointment.status == Appointment.Status.CANCELLED:
@@ -574,15 +590,17 @@ def cancel_appointment(
 
     if appointment.status != Appointment.Status.CONFIRMED:
         raise InvalidAppointmentStateError(
-            "Only confirmed appointments can be cancelled."
+            _("Only confirmed appointments can be cancelled.")
         )
 
     cancellation_note = cancellation_note.strip()
 
     if len(cancellation_note) > 250:
         raise AppointmentBookingError(
-            "The cancellation note cannot exceed "
-            "250 characters."
+            _(
+                "The cancellation note cannot exceed "
+                "250 characters."
+            )
         )
 
     slot = (

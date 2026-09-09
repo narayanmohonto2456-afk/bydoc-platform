@@ -1,22 +1,97 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
-#
-#, fuzzy
+# SehatSaathi API messages.
 msgid ""
-msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-08 14:01+0530\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
-"MIME-Version: 1.0\n"
-"Content-Type: text/plain; charset=UTF-8\n"
-"Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
-#: .\apps\preferences\serializers.py:16 .\apps\preferences\serializers.py:55
+msgstr "Project-Id-Version: SehatSaathi\nReport-Msgid-Bugs-To: \nPOT-Creation-Date: 2026-09-09 00:00+0000\nPO-Revision-Date: 2026-09-09 00:00+0000\nLast-Translator: SehatSaathi team\nLanguage-Team: bn\nLanguage: bn\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nPlural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "An authenticated user is required."
+msgstr "লগইন করা ব্যবহারকারী প্রয়োজন।"
+
+msgid "An authenticated patient is required."
+msgstr "রোগীকে লগইন করতে হবে।"
+
+msgid "An authenticated booking user is required."
+msgstr "যিনি বুকিং করছেন, তাঁকে লগইন করতে হবে।"
+
+msgid "An authenticated cancelling user is required."
+msgstr "যিনি বাতিল করছেন, তাঁকে লগইন করতে হবে।"
+
+msgid "The doctor is not active at this clinic."
+msgstr "এই ক্লিনিকে ডাক্তারের প্রোফাইল সক্রিয় নেই।"
+
+msgid "Online booking is not enabled for this doctor."
+msgstr "এই ডাক্তারের জন্য অনলাইন বুকিং চালু নেই।"
+
+msgid "The clinic is not currently active."
+msgstr "ক্লিনিকটি বর্তমানে সক্রিয় নয়।"
+
+msgid "The organization is not currently active."
+msgstr "প্রতিষ্ঠানটি বর্তমানে সক্রিয় নয়।"
+
+msgid "Past appointment slots cannot be booked."
+msgstr "অ্যাপয়েন্টমেন্টের সময় পেরিয়ে গেলে সেই সময়ের জন্য বুকিং করা যায় না।"
+
+msgid "This appointment slot is unavailable."
+msgstr "অ্যাপয়েন্টমেন্টের এই সময়টি বুকিংয়ের জন্য উপলব্ধ নয়।"
+
+msgid "This slot is temporarily held by another user."
+msgstr "অন্য একজন ব্যবহারকারীর জন্য এই সময়টি সাময়িকভাবে সংরক্ষিত রয়েছে।"
+
+msgid "The booking request identifier is invalid."
+msgstr "বুকিং অনুরোধের শনাক্তকারীটি সঠিক নয়।"
+
+msgid "This booking request identifier has already been used."
+msgstr "এই বুকিং অনুরোধের শনাক্তকারীটি ইতিমধ্যে ব্যবহার করা হয়েছে।"
+
+msgid "This slot does not have an active hold."
+msgstr "এই সময়টির জন্য কোনো সক্রিয় সাময়িক সংরক্ষণ নেই।"
+
+msgid "This slot is held by another user."
+msgstr "এই সময়টি অন্য একজন ব্যবহারকারীর জন্য সংরক্ষিত রয়েছে।"
+
+msgid "The slot hold token is invalid."
+msgstr "সময়টি সাময়িকভাবে সংরক্ষণের টোকেনটি সঠিক নয়।"
+
+msgid "The slot hold has expired."
+msgstr "সময়টি সাময়িকভাবে সংরক্ষণের মেয়াদ শেষ হয়েছে।"
+
+msgid "Slots cannot be generated for an inactive affiliation."
+msgstr "ডাক্তার ও ক্লিনিকের সংযোগ সক্রিয় না থাকলে অ্যাপয়েন্টমেন্টের সময় তৈরি করা যায় না।"
+
+msgid "Online booking is not enabled for this affiliation."
+msgstr "এই ক্লিনিকে এই ডাক্তারের জন্য অনলাইন বুকিং চালু নেই।"
+
+msgid "Slots cannot be generated for an inactive clinic."
+msgstr "নিষ্ক্রিয় ক্লিনিকের জন্য অ্যাপয়েন্টমেন্টের সময় তৈরি করা যায় না।"
+
+msgid "Slots cannot be generated for an inactive organization."
+msgstr "নিষ্ক্রিয় প্রতিষ্ঠানের জন্য অ্যাপয়েন্টমেন্টের সময় তৈরি করা যায় না।"
+
+msgid "The clinic timezone is invalid."
+msgstr "ক্লিনিকের সময় অঞ্চলের তথ্য সঠিক নয়।"
+
+msgid "You cannot cancel this appointment."
+msgstr "আপনি এই অ্যাপয়েন্টমেন্টটি বাতিল করতে পারবেন না।"
+
+msgid "Only confirmed appointments can be cancelled."
+msgstr "শুধুমাত্র নিশ্চিত করা অ্যাপয়েন্টমেন্ট বাতিল করা যায়।"
+
+msgid "The cancellation note cannot exceed 250 characters."
+msgstr "বাতিল করার নোটটি ২৫০ অক্ষরের বেশি হতে পারবে না।"
+
+#, python-format
+msgid "%(parameter)s must be a valid UUID."
+msgstr "%(parameter)s অবশ্যই একটি বৈধ UUID হতে হবে।"
+
+msgid "clinic_id is required."
+msgstr "clinic_id দিতে হবে।"
+
+msgid "date is required."
+msgstr "date দিতে হবে।"
+
+msgid "Appointment slot not found."
+msgstr "অ্যাপয়েন্টমেন্টের সময়টি পাওয়া যায়নি।"
+
+msgid "Appointment not found."
+msgstr "অ্যাপয়েন্টমেন্টটি পাওয়া যায়নি।"
+
 msgid "This language is not supported."
 msgstr "এই ভাষাটি সমর্থিত নয়।"
