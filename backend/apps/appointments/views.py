@@ -32,6 +32,7 @@ from .services import (
     hold_slot,
 )
 from drf_spectacular.utils import extend_schema
+from django.utils.translation import gettext as _
 
 def parse_uuid_parameter(value, parameter_name):
     try:
@@ -40,7 +41,8 @@ def parse_uuid_parameter(value, parameter_name):
         raise ValidationError(
             {
                 parameter_name: (
-                    f"{parameter_name} must be a valid UUID."
+                    _("%(parameter)s must be a valid UUID.")
+                    % {"parameter": parameter_name}
                 )
             }
         ) from error
@@ -71,10 +73,10 @@ class PublicSlotListView(generics.ListAPIView):
         errors = {}
 
         if not clinic_value:
-            errors["clinic_id"] = "clinic_id is required."
+            errors["clinic_id"] = _("clinic_id is required.")
 
         if not date_value:
-            errors["date"] = "date is required."
+            errors["date"] = _("date is required.")
 
         if errors:
             raise ValidationError(errors)
@@ -187,7 +189,7 @@ class HoldSlotView(generics.GenericAPIView):
             )
         except AppointmentSlot.DoesNotExist:
             return Response(
-                {"detail": "Appointment slot not found."},
+                {"detail": _("Appointment slot not found.")},
                 status=status.HTTP_404_NOT_FOUND,
             )
         except SlotUnavailableError as error:
@@ -237,7 +239,7 @@ class BookSlotView(generics.GenericAPIView):
             )
         except AppointmentSlot.DoesNotExist:
             return Response(
-                {"detail": "Appointment slot not found."},
+                {"detail": _("Appointment slot not found.")},
                 status=status.HTTP_404_NOT_FOUND,
             )
         except (
@@ -314,14 +316,14 @@ class CancelAppointmentView(
             )
         except Appointment.DoesNotExist:
             return Response(
-                {"detail": "Appointment not found."},
+                {"detail": _("Appointment not found.")},
                 status=status.HTTP_404_NOT_FOUND,
             )
         except AppointmentAuthorizationError:
             # Return 404 so unrelated users cannot confirm that
             # another patient's appointment exists.
             return Response(
-                {"detail": "Appointment not found."},
+                {"detail": _("Appointment not found.")},
                 status=status.HTTP_404_NOT_FOUND,
             )
         except InvalidAppointmentStateError as error:
