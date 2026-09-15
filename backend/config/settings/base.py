@@ -172,6 +172,9 @@ AUTH_USER_MODEL = "accounts.User"
 
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
@@ -248,3 +251,25 @@ CELERY_BEAT_SCHEDULE = {
 
 
 APPOINTMENT_HOLD_MINUTES = 5
+
+# Browser sessions for the patient-facing API.
+CORS_ALLOW_CREDENTIALS = True
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_AGE = 12 * 60 * 60
+
+# Shared counters across Django workers. Redis outages fail closed for auth.
+CACHES = {
+    "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"},
+    "authentication": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": REDIS_URL,
+        "KEY_PREFIX": "authentication",
+        "OPTIONS": {"socket_connect_timeout": 2, "socket_timeout": 2},
+    },
+}
+AUTH_RATE_LIMITS = {
+    "login_ip": (30, 60),
+    "login_account": (10, 300),
+    "register_ip": (5, 3600),
+}

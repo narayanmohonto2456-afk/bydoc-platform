@@ -15,3 +15,9 @@ DATABASES["default"].update(  # noqa: F405
 
 CELERY_TASK_ALWAYS_EAGER = True
 CELERY_TASK_EAGER_PROPAGATES = True
+
+# Tests isolate auth counters without requiring a running Redis service.
+CACHES["authentication"] = {  # noqa: F405
+    "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    "LOCATION": "authentication-tests",
+}
