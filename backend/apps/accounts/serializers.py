@@ -87,3 +87,20 @@ class LoginResponseSerializer(serializers.Serializer):
 
 class AuthErrorSerializer(serializers.Serializer):
     detail = serializers.CharField(read_only=True)
+
+
+class VerifyRequestSerializer(StrictFieldsMixin, serializers.Serializer):
+    address = serializers.EmailField(max_length=254)
+    current_password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=128)
+
+
+class ResetRequestSerializer(StrictFieldsMixin, serializers.Serializer):
+    address = serializers.EmailField(max_length=254)
+
+
+class TokenSerializer(StrictFieldsMixin, serializers.Serializer):
+    token = serializers.CharField(trim_whitespace=False, max_length=2048)
+
+
+class ResetConfirmSerializer(TokenSerializer):
+    password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=128)

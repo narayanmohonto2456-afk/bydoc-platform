@@ -21,3 +21,5 @@ CACHES["authentication"] = {  # noqa: F405
     "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     "LOCATION": "authentication-tests",
 }
+
+EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"

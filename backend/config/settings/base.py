@@ -233,6 +233,12 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = "UTC"
 
 CELERY_BEAT_SCHEDULE = {
+    "dispatch-recovery-email-every-minute": {
+        "task": "accounts.dispatch_recovery_email", "schedule": 60.0,
+    },
+    "recover-stale-recovery-email-every-five-minutes": {
+        "task": "accounts.recover_stale_recovery_email", "schedule": 300.0,
+    },
     "dispatch-due-notifications-every-minute": {
         "task": (
             "notifications.dispatch_due_notifications"
@@ -272,4 +278,14 @@ AUTH_RATE_LIMITS = {
     "login_ip": (30, 60),
     "login_account": (10, 300),
     "register_ip": (5, 3600),
+    "verify_ip": (10, 3600),
+    "verify_user": (5, 3600),
+    "reset_ip": (10, 3600),
+    "reset_address": (5, 3600),
+    "confirm_ip": (30, 3600),
 }
+
+ACCOUNT_LINK_BASE_URL = env("ACCOUNT_LINK_BASE_URL", default="http://localhost:3000")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="SehatSaathi <noreply@localhost>")
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.filebased.EmailBackend")
+EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", default=str(BASE_DIR / "local-email"))
