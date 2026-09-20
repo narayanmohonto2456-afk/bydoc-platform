@@ -11,7 +11,12 @@ from .rate_limits import client_address, consume_limit
 from .serializers import (
     AccountSerializer, AuthErrorSerializer, CsrfTokenSerializer,
     LoginResponseSerializer, LoginSerializer, RegistrationSerializer,
+    VerifyRequestSerializer, ResetRequestSerializer, TokenSerializer, ResetConfirmSerializer,
 )
+from .models import AccountRecoveryRequest, VerifiedEmail
+from .recovery import consume_link, request_link
+from django.contrib.auth import get_user_model
+from django.db import transaction
 
 
 class AccountAPIView(generics.GenericAPIView):
@@ -97,3 +102,72 @@ class MyAccountView(AccountAPIView):
     @extend_schema(responses={200: AccountSerializer})
     def get(self, request):
         return Response(self.get_serializer(request.user).data)
+
+
+class VerifyEmailRequestView(AccountAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = VerifyRequestSerializer
+
+    @extend_schema(responses={202: None})
+    def post(self, request):
+        consume_limit("verify_ip", client_address(request))
+        consume_limit("verify_user", request.user.pk)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        address = serializer.validated_data["address"].strip().lower()
+        if not request.user.check_password(serializer.validated_data["current_password"]):
+            return Response({"detail": "Current password is incorrect."}, status=400)
+        with transaction.atomic():
+            user = get_user_model().objects.select_for_update().get(pk=request.user.pk)
+            if not VerifiedEmail.objects.filter(address__iexact=address).exclude(user=user).exists():
+                request_link(user, AccountRecoveryRequest.Purpose.VERIFY, address)
+        return Response(status=202)
+
+
+class VerifyEmailConfirmView(AccountAPIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = TokenSerializer
+
+    @extend_schema(responses={204: None})
+    def post(self, request):
+        consume_limit("confirm_ip", client_address(request))
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        consume_link(serializer.validated_data["token"], AccountRecoveryRequest.Purpose.VERIFY)
+        return Response(status=204)
+
+
+class ResetRequestView(AccountAPIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = ResetRequestSerializer
+
+    @extend_schema(responses={202: None})
+    def post(self, request):
+        consume_limit("reset_ip", client_address(request))
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        address = serializer.validated_data["address"].strip().lower()
+        consume_limit("reset_address", address)
+        verified = VerifiedEmail.objects.select_related("user").filter(address__iexact=address, user__is_active=True).first()
+        if verified:
+            with transaction.atomic():
+                user = get_user_model().objects.select_for_update().get(pk=verified.user_id)
+                request_link(user, AccountRecoveryRequest.Purpose.RESET, verified.address)
+        return Response({"detail": "If the address is eligible, an email will be sent."}, status=202)
+
+
+class ResetConfirmView(AccountAPIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = ResetConfirmSerializer
+
+    @extend_schema(responses={204: None})
+    def post(self, request):
+        consume_limit("confirm_ip", client_address(request))
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        consume_link(serializer.validated_data["token"], AccountRecoveryRequest.Purpose.RESET,
+                     serializer.validated_data["password"])
+        return Response(status=204)

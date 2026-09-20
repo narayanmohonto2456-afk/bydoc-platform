@@ -57,3 +57,40 @@ class User(AbstractUser):
 
     def __str__(self) -> str:
         return self.email or self.phone_number or self.username
+
+
+class VerifiedEmail(models.Model):
+    user = models.OneToOneField("accounts.User", on_delete=models.CASCADE, related_name="verified_email")
+    address = models.EmailField()
+    verified_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(models.functions.Lower("address"), name="unique_verified_email_ci")]
+
+
+class AccountRecoveryRequest(models.Model):
+    class Purpose(models.TextChoices):
+        VERIFY = "verify", "Verify email"
+        RESET = "reset", "Reset password"
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="recovery_requests")
+    purpose = models.CharField(max_length=10, choices=Purpose.choices)
+    address = models.EmailField()
+    password_fingerprint = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    state = models.CharField(max_length=12, choices=State.choices, default=State.PENDING)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    locked_at = models.DateTimeField(null=True, blank=True)
+    next_attempt_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["state", "next_attempt_at"], name="account_recovery_due_idx")]

@@ -37,6 +37,7 @@ db.sqlite3-journal
 media/
 staticfiles/
 local_settings.py
+backend/local-email/
 
 # PostgreSQL and backups
 *.sql
