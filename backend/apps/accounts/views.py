@@ -12,8 +12,9 @@ from .serializers import (
     AccountSerializer, AuthErrorSerializer, CsrfTokenSerializer,
     LoginResponseSerializer, LoginSerializer, RegistrationSerializer,
     VerifyRequestSerializer, ResetRequestSerializer, TokenSerializer, ResetConfirmSerializer,
+        PatientProfileSerializer,
 )
-from .models import AccountRecoveryRequest, VerifiedEmail
+from .models import AccountRecoveryRequest, VerifiedEmail, PatientProfile
 from .recovery import consume_link, request_link
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -171,3 +172,49 @@ class ResetConfirmView(AccountAPIView):
         consume_link(serializer.validated_data["token"], AccountRecoveryRequest.Purpose.RESET,
                      serializer.validated_data["password"])
         return Response(status=204)
+
+class MyPatientProfileView(AccountAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = PatientProfileSerializer
+
+    def get_profile(self, user):
+        profile, _ = PatientProfile.objects.get_or_create(
+            user=user,
+        )
+
+        return (
+            PatientProfile.objects
+            .select_related("user")
+            .get(pk=profile.pk)
+        )
+
+    @extend_schema(responses={200: PatientProfileSerializer})
+    def get(self, request):
+        profile = self.get_profile(request.user)
+
+        return Response(
+            self.get_serializer(profile).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @extend_schema(
+        request=PatientProfileSerializer,
+        responses={200: PatientProfileSerializer},
+    )
+    def patch(self, request):
+        profile = self.get_profile(request.user)
+
+        serializer = self.get_serializer(
+            profile,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+
+        profile.refresh_from_db()
+
+        return Response(
+            self.get_serializer(profile).data,
+            status=status.HTTP_200_OK,
+        )

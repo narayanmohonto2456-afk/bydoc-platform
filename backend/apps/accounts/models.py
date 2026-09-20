@@ -3,6 +3,8 @@ import uuid
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 
 phone_validator = RegexValidator(
@@ -94,3 +96,90 @@ class AccountRecoveryRequest(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["state", "next_attempt_at"], name="account_recovery_due_idx")]
+
+class PatientProfile(models.Model):
+    """
+    Patient-owned contact and demographic information.
+
+    This model intentionally stores no diagnosis, prescription,
+    consultation note, or other clinical-record information.
+    """
+
+    class Gender(models.TextChoices):
+        WOMAN = "woman", "Woman"
+        MAN = "man", "Man"
+        NON_BINARY = "non_binary", "Non-binary"
+        PREFER_NOT_TO_SAY = (
+            "prefer_not_to_say",
+            "Prefer not to say",
+        )
+
+    user = models.OneToOneField(
+        "accounts.User",
+        on_delete=models.CASCADE,
+        related_name="patient_profile",
+    )
+    date_of_birth = models.DateField(
+        blank=True,
+        null=True,
+    )
+    gender = models.CharField(
+        max_length=20,
+        choices=Gender.choices,
+        blank=True,
+    )
+    emergency_contact_name = models.CharField(
+        max_length=150,
+        blank=True,
+    )
+    emergency_contact_phone = models.CharField(
+        max_length=16,
+        blank=True,
+        validators=[phone_validator],
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        db_table = "accounts_patient_profile"
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        emergency_contact_name="",
+                        emergency_contact_phone="",
+                    )
+                    | (
+                        models.Q(
+                            emergency_contact_name__gt="",
+                        )
+                        & models.Q(
+                            emergency_contact_phone__gt="",
+                        )
+                    )
+                ),
+                name="patient_profile_emergency_contact_complete",
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+
+        if (
+            self.date_of_birth is not None
+            and self.date_of_birth > timezone.localdate()
+        ):
+            raise ValidationError(
+                {
+                    "date_of_birth": (
+                        "Date of birth cannot be in the future."
+                    )
+                }
+            )
+
+    def __str__(self) -> str:
+        return f"Patient profile for {self.user}"
