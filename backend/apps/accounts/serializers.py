@@ -227,33 +227,37 @@ class PatientProfileSerializer(
             "phone_number",
         }
 
-        with transaction.atomic():
-            user = instance.user
+        phone_number = validated_data.get("phone_number")
+        try:
+            with transaction.atomic():
+                user = User.objects.select_for_update().get(pk=instance.user_id)
+                instance = PatientProfile.objects.select_for_update().get(pk=instance.pk)
 
-            for field_name in user_fields:
-                if field_name in validated_data:
-                    setattr(
-                        user,
-                        field_name,
-                        validated_data.pop(field_name),
-                    )
+                changed_user_fields = []
+                for field_name in user_fields:
+                    if field_name in validated_data:
+                        setattr(user, field_name, validated_data.pop(field_name))
+                        changed_user_fields.append(field_name)
+                if changed_user_fields:
+                    user.save(update_fields=[*changed_user_fields, "updated_at"])
 
-            user.save(
-                update_fields=[
-                    "first_name",
-                    "last_name",
-                    "phone_number",
-                    "updated_at",
-                ]
-            )
-
-            for field_name, value in validated_data.items():
-                setattr(instance, field_name, value)
-
-            instance.full_clean()
-            instance.save()
-
-        return instance
+                for field_name, value in validated_data.items():
+                    setattr(instance, field_name, value)
+                try:
+                    instance.full_clean()
+                except DjangoValidationError as error:
+                    raise serializers.ValidationError(
+                        error.message_dict if hasattr(error, "message_dict") else error.messages
+                    ) from error
+                instance.save()
+                instance.user = user
+                return instance
+        except IntegrityError as error:
+            if phone_number and User.objects.filter(phone_number=phone_number).exclude(pk=instance.user_id).exists():
+                raise serializers.ValidationError({
+                    "phone_number": ["This phone number is already in use."],
+                }) from error
+            raise
 
     def to_representation(self, instance):
         return {

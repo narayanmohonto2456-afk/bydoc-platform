@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from .models import PatientProfile
+from .serializers import PatientProfileSerializer
 
 
 pytestmark = pytest.mark.django_db
@@ -186,3 +187,33 @@ def test_profiles_are_private_to_each_authenticated_user():
     assert response.status_code == status.HTTP_200_OK
     assert response.data["first_name"] == ""
     assert response.data["emergency_contact_name"] == ""
+
+
+def test_phone_claimed_after_validation_returns_400():
+    user = create_user("phone-race-user")
+    profile = PatientProfile.objects.create(user=user)
+    number = "+919876543212"
+    serializer = PatientProfileSerializer(profile, data={"phone_number": number}, partial=True)
+    assert serializer.is_valid(), serializer.errors
+    create_user("phone-race-winner", phone_number=number)
+
+    from rest_framework.exceptions import ValidationError as APIValidationError
+    with pytest.raises(APIValidationError) as error:
+        serializer.save()
+    assert "phone_number" in error.value.detail
+    user.refresh_from_db()
+    assert user.phone_number is None
+
+
+def test_profile_patch_enforces_session_csrf():
+    user = create_user("csrf-profile-user")
+    client = APIClient(enforce_csrf_checks=True)
+    client.force_login(user)
+    assert client.patch(profile_url(), {"first_name": "Blocked"}, format="json").status_code == 403
+    csrf_response = client.get(reverse("accounts:csrf"))
+    assert csrf_response.status_code == 200
+    token = csrf_response.data["csrf_token"]
+    changed = client.patch(profile_url(), {"first_name": "Allowed"}, format="json", HTTP_X_CSRFTOKEN=token)
+    assert changed.status_code == 200, changed.data
+    user.refresh_from_db()
+    assert user.first_name == "Allowed"

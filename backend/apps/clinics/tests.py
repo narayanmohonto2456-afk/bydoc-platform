@@ -57,6 +57,12 @@ def create_clinic(
     )
 
 
+def test_clinic_string_uses_existing_fields():
+    organization = create_organization()
+    clinic = create_clinic(organization)
+    assert str(clinic) == f"Care Clinic ({organization})"
+
+
 def test_user_only_accesses_clinics_in_their_organization():
     user = User.objects.create_user(
         username="clinic-manager",
