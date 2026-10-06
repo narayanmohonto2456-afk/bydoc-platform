@@ -27,7 +27,15 @@ def token_for(record):
     return signing.dumps(str(record.pk), salt=SALT)
 
 
+@transaction.atomic
 def request_link(user, purpose, address):
+    user = User.objects.select_for_update().get(pk=user.pk)
+    if purpose == AccountRecoveryRequest.Purpose.VERIFY:
+        AccountRecoveryRequest.objects.filter(
+            user=user,
+            purpose=AccountRecoveryRequest.Purpose.VERIFY,
+            used_at__isnull=True,
+        ).update(used_at=timezone.now())
     return AccountRecoveryRequest.objects.create(
         user=user, purpose=purpose, address=address,
         password_fingerprint=fingerprint(user),
@@ -62,6 +70,11 @@ def consume_link(token, purpose, password=None):
             except IntegrityError:
                 raise ValidationError({"token": "This email address is unavailable."})
         else:
+            # Replacing a verified address revokes reset links sent to the old one.
+            if not VerifiedEmail.objects.filter(
+                user=user, address__iexact=record.address,
+            ).exists():
+                raise ValidationError({"token": "This link is invalid or expired."})
             if password is None:
                 raise ValidationError({"password": "A new password is required."})
             try:

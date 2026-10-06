@@ -116,10 +116,10 @@ class VerifyEmailRequestView(AccountAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         address = serializer.validated_data["address"].strip().lower()
-        if not request.user.check_password(serializer.validated_data["current_password"]):
-            return Response({"detail": "Current password is incorrect."}, status=400)
         with transaction.atomic():
             user = get_user_model().objects.select_for_update().get(pk=request.user.pk)
+            if not user.check_password(serializer.validated_data["current_password"]):
+                return Response({"detail": "Current password is incorrect."}, status=400)
             if not VerifiedEmail.objects.filter(address__iexact=address).exclude(user=user).exists():
                 request_link(user, AccountRecoveryRequest.Purpose.VERIFY, address)
         return Response(status=202)
