@@ -70,6 +70,17 @@ class VerifiedEmail(models.Model):
         constraints = [models.UniqueConstraint(models.functions.Lower("address"), name="unique_verified_email_ci")]
 
 
+class GoogleIdentity(models.Model):
+    user = models.OneToOneField(
+        "accounts.User", on_delete=models.CASCADE, related_name="google_identity",
+    )
+    subject = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:
+        return f"Google identity for {self.user.username}"
+
+
 class AccountRecoveryRequest(models.Model):
     class Purpose(models.TextChoices):
         VERIFY = "verify", "Verify email"

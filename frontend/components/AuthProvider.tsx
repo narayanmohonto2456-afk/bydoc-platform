@@ -8,6 +8,7 @@ type AuthState = {
   loading: boolean;
   refresh: () => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
+  googleLogin: (credential: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -38,12 +39,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(result.user);
   }
 
+  async function googleLogin(credential: string) {
+    const result = await postJson<{ user: Account }>("/auth/google/", { credential });
+    setUser(result.user);
+  }
+
   async function logout() {
     await postJson<void>("/auth/logout/", {});
     setUser(null);
   }
 
-  return <AuthContext.Provider value={{ user, loading, refresh, login, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, loading, refresh, login, googleLogin, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthState {

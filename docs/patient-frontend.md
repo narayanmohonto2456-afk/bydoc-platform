@@ -1,6 +1,6 @@
 # Patient account frontend
 
-This Next.js application implements registration, sign in, patient profile editing, verified email request/confirmation, and password reset. It uses the existing Django session and CSRF APIs. It does not yet provide doctor discovery, booking, notifications, support, or full Bengali and Hindi interface translations.
+This Next.js application implements registration, email or username sign-in, configurable Google sign-in, patient profile editing, verified email request/confirmation, and password reset. It uses the existing Django session and CSRF APIs. See [email-google-sign-in.md](email-google-sign-in.md) for Google setup and account linking. It does not yet provide doctor discovery, booking, notifications, support, or full Bengali and Hindi interface translations.
 
 ## Local setup on Windows
 
@@ -15,8 +15,10 @@ From `backend`, run Django:
 
 ```powershell
 cd E:\start_up\sehatsaathi-platform\backend
-python manage.py migrate
-python manage.py runserver 127.0.0.1:8000
+python -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements/development.txt
+.\venv\Scripts\python.exe manage.py migrate
+.\venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
 ```
 
 From `frontend`, install dependencies and start Next.js in another terminal:
@@ -34,13 +36,13 @@ Email requests are stored in PostgreSQL. To deliver local verification or reset 
 
 ```powershell
 cd E:\start_up\sehatsaathi-platform\backend
-python -m celery -A config worker --loglevel=INFO --pool=solo --concurrency=1 --without-mingle --without-gossip
+.\venv\Scripts\python.exe -m celery -A config worker --loglevel=INFO --pool=solo --concurrency=1 --without-mingle --without-gossip
 ```
 
 Run Beat separately from `backend`:
 
 ```powershell
-python -m celery -A config beat --loglevel=INFO --schedule "$env:TEMP\sehatsaathi-celerybeat-schedule"
+.\venv\Scripts\python.exe -m celery -A config beat --loglevel=INFO --schedule "$env:TEMP\sehatsaathi-celerybeat-schedule"
 ```
 
 ## Checks

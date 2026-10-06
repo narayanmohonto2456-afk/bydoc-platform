@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import User
+from .models import GoogleIdentity, User
 
 
 @admin.register(User)
@@ -59,3 +59,13 @@ class UserAdmin(DjangoUserAdmin):
             },
         ),
     )
+
+
+@admin.register(GoogleIdentity)
+class GoogleIdentityAdmin(admin.ModelAdmin):
+    list_display = ("user", "subject", "created_at")
+    search_fields = ("user__username", "subject")
+    readonly_fields = ("user", "subject", "created_at")
+
+    def has_add_permission(self, request):
+        return False

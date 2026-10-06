@@ -9,4 +9,4 @@ All routes use `/api/v1/auth/`. Browser writes require the CSRF token from `GET 
 
 The account link request is written to PostgreSQL before the API responds. Celery Beat dispatches pending email each minute and recovers abandoned attempts every five minutes. Workers retry failed sends up to five times. A worker crash after provider acceptance can cause duplicate mail, while token consumption remains single use.
 
-Local development writes messages to `backend/local-email` by default. Set `ACCOUNT_LINK_BASE_URL` to the frontend origin. The token is in the URL fragment so browsers do not send it to the frontend server in the HTTP request. Frontend verification and reset pages still need implementation. Production email delivery must be configured separately; no provider is enabled by this change.
+Local development writes messages to `backend/local-email` by default. Set `ACCOUNT_LINK_BASE_URL` to the frontend origin. The token is in the URL fragment so browsers do not send it to the frontend server in the HTTP request. The frontend provides verification and reset pages. Production email delivery must be configured separately; no provider is enabled by this change.

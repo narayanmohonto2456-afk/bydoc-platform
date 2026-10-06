@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { apiRequest, PatientProfile, postJson } from "@/lib/api";
 import { PasswordField } from "@/components/PasswordField";
+import { GoogleButton } from "@/components/GoogleButton";
+
+type GoogleStatus = { connected: boolean; verified_email: string | null; has_password: boolean };
 
 export default function AccountPage() {
   const router = useRouter();
@@ -21,12 +24,17 @@ export default function AccountPage() {
   const [verifyDone, setVerifyDone] = useState(false);
   const [verifyBusy, setVerifyBusy] = useState(false);
   const [logoutError, setLogoutError] = useState("");
+  const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
+  const [googleStatusError, setGoogleStatusError] = useState("");
 
   useEffect(() => {
     if (!user) return;
     apiRequest<PatientProfile>("/auth/profile/")
       .then(result => { setProfile(result); setSavedProfile(result); })
       .catch(cause => setProfileError(cause instanceof Error ? cause.message : "Could not load your profile."));
+    apiRequest<GoogleStatus>("/auth/google/status/")
+      .then(setGoogleStatus)
+      .catch(cause => setGoogleStatusError(cause instanceof Error ? cause.message : "Could not load sign-in settings."));
   }, [user?.id]);
 
   const profileDirty = profile !== null && savedProfile !== null && JSON.stringify(profile) !== JSON.stringify(savedProfile);
@@ -108,14 +116,27 @@ export default function AccountPage() {
         </form>}
       </section>
       <section className="panel" aria-labelledby="email-heading">
-        <h2 id="email-heading">Recovery email</h2><p>Verify an email address so you can reset your password if needed. Your current password is required to add or replace it.</p>
+        <h2 id="email-heading">Recovery email</h2><p>Verify an email address so you can sign in with it and reset your password if needed.</p>
+        {googleStatus?.verified_email && <p className="verified-address">Verified: {googleStatus.verified_email}</p>}
         {verifyError && <div className="message message-error" role="alert">{verifyError}</div>}
         {verifyDone && <div className="message message-success" role="status">Verification requested. Open the link sent to your email address within 30 minutes.</div>}
-        <form onSubmit={requestVerification}>
+        {googleStatus?.has_password === false ? <p>Your Google account has no password yet. To add one, <Link href="/forgot-password">request a password reset</Link> using your verified email.</p> : <form onSubmit={requestVerification}>
           <div className="field"><label htmlFor="address">Email address</label><input id="address" type="email" autoComplete="email" required value={address} onChange={event => setAddress(event.target.value)} /></div>
           <PasswordField id="current-password" label="Current password" autoComplete="current-password" value={currentPassword} onChange={setCurrentPassword} />
           <button className="button" disabled={verifyBusy}>{verifyBusy ? "Submitting…" : "Send verification link"}</button>
-        </form>
+        </form>}
+      </section>
+      <section className="panel" aria-labelledby="google-heading">
+        <h2 id="google-heading">Google sign-in</h2>
+        {googleStatusError && <div className="message message-error" role="alert">{googleStatusError}</div>}
+        {!googleStatus && !googleStatusError && <p role="status">Loading sign-in settings…</p>}
+        {googleStatus?.connected ? <p className="message message-success" role="status">Your Google account is connected.</p> : googleStatus && (googleStatus.verified_email ? <>
+          <p>Connect the Google account for <strong>{googleStatus.verified_email}</strong>. After that, you can use Google to sign in.</p>
+          <GoogleButton onCredential={async credential => {
+            await postJson<void>("/auth/google/link/", { credential });
+            setGoogleStatus(current => current ? { ...current, connected: true } : current);
+          }} />
+        </> : <p>Verify an email address above before connecting Google to this account.</p>)}
       </section>
     </div>
   </div>;
