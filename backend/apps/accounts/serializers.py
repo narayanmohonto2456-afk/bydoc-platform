@@ -5,7 +5,8 @@ from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from django.utils import timezone
 
-from .models import PatientProfile, phone_validator
+from .models import AccountRecoveryRequest, PatientProfile, VerifiedEmail, phone_validator
+from .recovery import request_link
 
 User = get_user_model()
 
@@ -27,6 +28,7 @@ class AccountSerializer(serializers.ModelSerializer):
 
 
 class RegistrationSerializer(StrictFieldsMixin, serializers.ModelSerializer):
+    email = serializers.EmailField(write_only=True, required=False, max_length=254)
     password = serializers.CharField(
         write_only=True, trim_whitespace=False, max_length=128,
         style={"input_type": "password"},
@@ -34,10 +36,19 @@ class RegistrationSerializer(StrictFieldsMixin, serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("username", "password", "first_name", "last_name")
+        fields = ("username", "email", "password", "first_name", "last_name")
+
+    def validate_email(self, value):
+        value = value.strip().casefold()
+        if (VerifiedEmail.objects.filter(address__iexact=value).exists()
+                or User.objects.filter(email__iexact=value).exists()):
+            raise serializers.ValidationError("This email address is unavailable.")
+        return value
 
     def validate_username(self, value):
         value = User.normalize_username(value)
+        if "@" in value:
+            raise serializers.ValidationError("Choose a username without @; use the email field for your address.")
         try:
             User._meta.get_field("username").run_validators(value)
         except DjangoValidationError as error:
@@ -55,11 +66,15 @@ class RegistrationSerializer(StrictFieldsMixin, serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
+        address = validated_data.pop("email", None)
         try:
             with transaction.atomic():
-                return User.objects.create_user(
+                user = User.objects.create_user(
                     **validated_data, is_staff=False, is_superuser=False,
                 )
+                if address:
+                    request_link(user, AccountRecoveryRequest.Purpose.VERIFY, address)
+                return user
         except IntegrityError as error:
             if User.objects.filter(username=validated_data["username"]).exists():
                 raise serializers.ValidationError({
@@ -76,7 +91,18 @@ class LoginSerializer(StrictFieldsMixin, serializers.Serializer):
     )
 
     def validate_username(self, value):
-        return User.normalize_username(value)
+        value = User.normalize_username(value)
+        return value.casefold() if "@" in value else value
+
+
+class GoogleCredentialSerializer(StrictFieldsMixin, serializers.Serializer):
+    credential = serializers.CharField(trim_whitespace=False, max_length=4096)
+
+
+class GoogleStatusSerializer(serializers.Serializer):
+    connected = serializers.BooleanField(read_only=True)
+    verified_email = serializers.EmailField(read_only=True, allow_null=True)
+    has_password = serializers.BooleanField(read_only=True)
 
 
 class CsrfTokenSerializer(serializers.Serializer):

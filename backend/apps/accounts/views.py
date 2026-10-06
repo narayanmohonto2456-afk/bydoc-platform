@@ -11,11 +11,13 @@ from .rate_limits import client_address, consume_limit
 from .serializers import (
     AccountSerializer, AuthErrorSerializer, CsrfTokenSerializer,
     LoginResponseSerializer, LoginSerializer, RegistrationSerializer,
+    GoogleCredentialSerializer, GoogleStatusSerializer,
     VerifyRequestSerializer, ResetRequestSerializer, TokenSerializer, ResetConfirmSerializer,
         PatientProfileSerializer,
 )
-from .models import AccountRecoveryRequest, VerifiedEmail, PatientProfile
+from .models import AccountRecoveryRequest, GoogleIdentity, VerifiedEmail, PatientProfile
 from .recovery import consume_link, request_link
+from .google_auth import google_sign_in, link_google_identity, verify_google_credential
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
@@ -72,8 +74,18 @@ class LoginView(AccountAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         credentials = serializer.validated_data
-        consume_limit("login_account", credentials["username"])
-        user = authenticate(request=request._request, **credentials)
+        identifier = credentials["username"]
+        consume_limit("login_account", identifier.casefold())
+        verified = None
+        if "@" in identifier:
+            verified = VerifiedEmail.objects.select_related("user").filter(
+                address__iexact=identifier, user__is_active=True,
+            ).first()
+        username = verified.user.username if verified else identifier
+        user = authenticate(
+            request=request._request, username=username,
+            password=credentials["password"],
+        )
         if user is None:
             return Response(
                 {"detail": "Unable to sign in with these credentials."},
@@ -83,6 +95,55 @@ class LoginView(AccountAPIView):
         return Response({
             "user": AccountSerializer(user).data,
             "csrf_token": get_token(request._request),
+        })
+
+
+class GoogleSignInView(AccountAPIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = GoogleCredentialSerializer
+
+    @extend_schema(responses={200: LoginResponseSerializer, 400: AuthErrorSerializer, 409: AuthErrorSerializer})
+    def post(self, request):
+        consume_limit("login_ip", client_address(request))
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        claims = verify_google_credential(serializer.validated_data["credential"])
+        consume_limit("login_account", f"google:{claims.subject}")
+        user = google_sign_in(claims)
+        login(request._request, user, backend="django.contrib.auth.backends.ModelBackend")
+        return Response({
+            "user": AccountSerializer(user).data,
+            "csrf_token": get_token(request._request),
+        })
+
+
+class GoogleLinkView(AccountAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = GoogleCredentialSerializer
+
+    @extend_schema(responses={204: None, 400: AuthErrorSerializer, 409: AuthErrorSerializer})
+    def post(self, request):
+        consume_limit("verify_ip", client_address(request))
+        consume_limit("verify_user", request.user.pk)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        claims = verify_google_credential(serializer.validated_data["credential"])
+        link_google_identity(request.user, claims)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class GoogleStatusView(AccountAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = GoogleStatusSerializer
+
+    @extend_schema(responses={200: GoogleStatusSerializer})
+    def get(self, request):
+        verified = VerifiedEmail.objects.filter(user=request.user).first()
+        return Response({
+            "connected": GoogleIdentity.objects.filter(user=request.user).exists(),
+            "verified_email": verified.address if verified else None,
+            "has_password": request.user.has_usable_password(),
         })
 
 

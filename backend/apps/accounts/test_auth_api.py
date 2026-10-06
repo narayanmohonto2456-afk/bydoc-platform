@@ -112,7 +112,7 @@ def test_untrusted_origin_is_rejected_even_with_valid_token():
 @pytest.mark.parametrize("field,value", [
     ("is_staff", True), ("is_superuser", True), ("is_active", False),
     ("groups", [1]), ("user_permissions", [1]), ("id", "chosen-id"),
-    ("email", "unverified@example.com"), ("phone_number", "+919876543210"),
+    ("phone_number", "+919876543210"),
 ])
 def test_registration_rejects_unapproved_fields(field, value):
     response = post(browser(), "register", {
