@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { postJson } from "@/lib/api";
+import { PasswordField, PasswordStrength } from "@/components/PasswordField";
 
 export default function ResetPasswordPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -43,8 +44,10 @@ export default function ResetPasswordPage() {
       <p>This link works once and expires 30 minutes after it was requested.</p>
       {error && <div className="message message-error" role="alert">{error}</div>}
       {token ? <form onSubmit={submit}>
-        <div className="field"><label htmlFor="password">New password</label><input id="password" type="password" autoComplete="new-password" maxLength={128} required value={password} onChange={event => setPassword(event.target.value)} /></div>
-        <div className="field"><label htmlFor="confirm">Confirm new password</label><input id="confirm" type="password" autoComplete="new-password" maxLength={128} required value={confirm} onChange={event => setConfirm(event.target.value)} /></div>
+        <PasswordField id="password" label="New password" autoComplete="new-password" value={password} onChange={setPassword} />
+        <PasswordStrength password={password} />
+        <PasswordField id="confirm" label="Confirm new password" autoComplete="new-password" value={confirm} onChange={setConfirm} />
+        {confirm && <span className={`match-hint${confirm === password ? " match-good" : " match-pending"}`} role="status">{confirm === password ? "Passwords match." : "Passwords do not match yet."}</span>}
         <button className="button" disabled={busy}>{busy ? "Changing…" : "Change password"}</button>
       </form> : <div className="message message-error" role="alert">No reset link was found. <Link href="/forgot-password">Request another link</Link>.</div>}
     </>}

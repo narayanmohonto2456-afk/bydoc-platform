@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
 import { apiRequest, PatientProfile, postJson } from "@/lib/api";
+import { PasswordField } from "@/components/PasswordField";
 
 export default function AccountPage() {
   const router = useRouter();
   const { user, loading, logout, refresh } = useAuth();
   const [profile, setProfile] = useState<PatientProfile | null>(null);
+  const [savedProfile, setSavedProfile] = useState<PatientProfile | null>(null);
   const [profileError, setProfileError] = useState("");
   const [profileSaved, setProfileSaved] = useState(false);
   const [profileBusy, setProfileBusy] = useState(false);
@@ -23,17 +25,20 @@ export default function AccountPage() {
   useEffect(() => {
     if (!user) return;
     apiRequest<PatientProfile>("/auth/profile/")
-      .then(setProfile)
+      .then(result => { setProfile(result); setSavedProfile(result); })
       .catch(cause => setProfileError(cause instanceof Error ? cause.message : "Could not load your profile."));
   }, [user?.id]);
 
+  const profileDirty = profile !== null && savedProfile !== null && JSON.stringify(profile) !== JSON.stringify(savedProfile);
+
   function change<K extends keyof PatientProfile>(key: K, value: PatientProfile[K]) {
     setProfile(current => current ? { ...current, [key]: value } : current);
+    setProfileSaved(false);
   }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!profile) return;
+    if (!profile || !profileDirty) return;
     setProfileError("");
     setProfileSaved(false);
     setProfileBusy(true);
@@ -43,6 +48,7 @@ export default function AccountPage() {
         body: JSON.stringify({ ...profile, phone_number: profile.phone_number || "" }),
       });
       setProfile(saved);
+      setSavedProfile(saved);
       setProfileSaved(true);
       await refresh();
     } catch (cause) {
@@ -98,7 +104,7 @@ export default function AccountPage() {
           <div className="divider" /><h3>Emergency contact (optional)</h3><p>Provide both the name and phone number, or leave both empty.</p>
           <div className="field"><label htmlFor="emergency-name">Contact name</label><input id="emergency-name" maxLength={150} value={profile.emergency_contact_name} onChange={event => change("emergency_contact_name", event.target.value)} /></div>
           <div className="field"><label htmlFor="emergency-phone">Contact phone</label><input id="emergency-phone" type="tel" placeholder="+919876543211" value={profile.emergency_contact_phone} onChange={event => change("emergency_contact_phone", event.target.value)} /></div>
-          <button className="button" disabled={profileBusy}>{profileBusy ? "Saving…" : "Save profile"}</button>
+          <div className="form-actions"><button className="button" disabled={profileBusy || !profileDirty}>{profileBusy ? "Saving…" : "Save changes"}</button><button className="button button-secondary" type="button" disabled={profileBusy || !profileDirty} onClick={() => { setProfile(savedProfile); setProfileError(""); }}>Discard changes</button>{profileDirty && <span className="unsaved-label" role="status">Unsaved changes</span>}</div>
         </form>}
       </section>
       <section className="panel" aria-labelledby="email-heading">
@@ -107,7 +113,7 @@ export default function AccountPage() {
         {verifyDone && <div className="message message-success" role="status">Verification requested. Open the link sent to your email address within 30 minutes.</div>}
         <form onSubmit={requestVerification}>
           <div className="field"><label htmlFor="address">Email address</label><input id="address" type="email" autoComplete="email" required value={address} onChange={event => setAddress(event.target.value)} /></div>
-          <div className="field"><label htmlFor="current-password">Current password</label><input id="current-password" type="password" autoComplete="current-password" required value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} /></div>
+          <PasswordField id="current-password" label="Current password" autoComplete="current-password" value={currentPassword} onChange={setCurrentPassword} />
           <button className="button" disabled={verifyBusy}>{verifyBusy ? "Submitting…" : "Send verification link"}</button>
         </form>
       </section>

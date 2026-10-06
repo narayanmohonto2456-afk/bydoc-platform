@@ -53,3 +53,5 @@ npm.cmd run build
 ```
 
 The frontend never sends a patient ID with profile updates. Session cookies remain HttpOnly; unsafe API requests fetch a fresh CSRF token and send it in `X-CSRFToken`. Verification and reset tokens are read from URL fragments and removed from browser history when their pages load.
+
+The home page offers an interactive account setup guide. Keyboard users can move between its tabs with the left and right arrow keys. Forms show password visibility and strength feedback, and profile editing shows unsaved changes with a discard action. Motion respects the operating system's reduced motion preference.

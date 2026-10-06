@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/AuthProvider";
+import { PasswordField } from "@/components/PasswordField";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function LoginPage() {
     {error && <div className="message message-error" role="alert">{error}</div>}
     <form onSubmit={submit}>
       <div className="field"><label htmlFor="username">Username</label><input id="username" autoComplete="username" required value={username} onChange={event => setUsername(event.target.value)} /></div>
-      <div className="field"><label htmlFor="password">Password</label><input id="password" type="password" autoComplete="current-password" required value={password} onChange={event => setPassword(event.target.value)} /></div>
+      <PasswordField id="password" label="Password" autoComplete="current-password" value={password} onChange={setPassword} />
       <div className="form-actions"><button className="button" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button><Link href="/forgot-password">Forgot password?</Link></div>
     </form>
     <div className="divider" /><p>New to SehatSaathi? <Link href="/register">Create an account</Link>.</p>

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { postJson } from "@/lib/api";
+import { PasswordField, PasswordStrength } from "@/components/PasswordField";
 
 export default function RegisterPage() {
   const [username, setUsername] = useState("");
@@ -40,8 +41,10 @@ export default function RegisterPage() {
         <div className="field"><label htmlFor="username">Username</label><input id="username" autoComplete="username" maxLength={150} required value={username} onChange={event => setUsername(event.target.value)} /></div>
         <div className="field"><label htmlFor="first-name">First name (optional)</label><input id="first-name" autoComplete="given-name" maxLength={150} value={firstName} onChange={event => setFirstName(event.target.value)} /></div>
         <div className="field"><label htmlFor="last-name">Last name (optional)</label><input id="last-name" autoComplete="family-name" maxLength={150} value={lastName} onChange={event => setLastName(event.target.value)} /></div>
-        <div className="field"><label htmlFor="password">Password</label><input id="password" type="password" autoComplete="new-password" maxLength={128} required value={password} onChange={event => setPassword(event.target.value)} /><span className="field-hint">Use a long, unique password. Common passwords are rejected.</span></div>
-        <div className="field"><label htmlFor="confirm-password">Confirm password</label><input id="confirm-password" type="password" autoComplete="new-password" maxLength={128} required value={confirm} onChange={event => setConfirm(event.target.value)} /></div>
+        <PasswordField id="password" label="Password" autoComplete="new-password" value={password} onChange={setPassword} hint="Use a long, unique password. Common passwords are rejected." />
+        <PasswordStrength password={password} />
+        <PasswordField id="confirm-password" label="Confirm password" autoComplete="new-password" value={confirm} onChange={setConfirm} />
+        {confirm && <span className={`match-hint${confirm === password ? " match-good" : " match-pending"}`} role="status">{confirm === password ? "Passwords match." : "Passwords do not match yet."}</span>}
         <div className="form-actions"><button className="button" disabled={busy}>{busy ? "Creating…" : "Create account"}</button><Link href="/login">Already registered?</Link></div>
       </form>
     </>}
