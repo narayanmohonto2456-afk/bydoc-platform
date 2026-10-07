@@ -8,6 +8,8 @@ The Django backend has organization and clinic models, doctor profiles and verif
 
 The patient frontend does not yet provide doctor discovery, booking, notifications, or support screens. Clinic staff workflows, full frontend translations, production email delivery, deployment, monitoring, and backup restoration still need work. This repository is **not production ready**. The older interactive concept prototype is a design reference, not evidence of a live booking flow.
 
+An [AWS deployment design and release runbook](docs/aws-deployment.md) describes the proposed production environment, required secrets, container builds, release checks, and remaining launch gates. The backend has fail-closed production settings and a deployable container image; the frontend has a standalone container image. No AWS infrastructure has been provisioned from this repository.
+
 The latest frontend and sign-in work is on `feat/email-google-auth`, built on `feat/frontend-experience`. Those branches are pushed to GitHub but are not merged into `main`.
 
 Next milestones are the patient discovery and booking journey, receptionist clinic operations, broader language and accessibility coverage, and launch hardening. The August 2026 planning drafts list phone OTP as a P0 requirement; the current app uses email/password with optional Google sign-in. That product decision needs to be reconciled before treating the original plan as complete.
@@ -68,6 +70,7 @@ npm.cmd run build
 ```
 
 Backend CI also compiles translation catalogs and validates the OpenAPI schema. The current translated backend messages do not represent a complete Bengali or Hindi interface.
+Frontend CI typechecks and builds the standalone server with an example HTTPS API origin.
 
 ## Project boundaries
 
