@@ -65,6 +65,8 @@ The AWS ALB checks `GET /health/ready/` on the API target group and `GET /` on t
 
 ## Launch gates still open
 
+The optional AI guide needs a separately operated private Ollama service and model volume; it is disabled by default. If enabled, use `AI_CHAT_ENABLED=true`, `OLLAMA_BASE_URL=http://ollama.service.internal:11434`, and `OLLAMA_MODEL=llama3.2:3b` on the API tasks. Allow network access only from the API tasks, review model capacity and logs, and complete the clinical safety review described in [the AI guide](ai-assistant.md). This self-hosted model has no usage-based API fee but consumes AWS compute and storage.
+
 - Production infrastructure as code, AWS account/Region/domains, budgets, IAM review, key rotation, and alert routing have not been configured in this repository.
 - Staff and administrator MFA, a permissions audit across patient and clinic endpoints, and an independent security review are required before handling real patient information. Google sign-in remains optional until a client ID is configured.
 - Patient discovery/booking screens and clinic operations are still incomplete. The historical product plan's phone OTP requirement conflicts with the current email/Google authentication choice and needs a product decision.

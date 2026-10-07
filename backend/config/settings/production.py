@@ -1,6 +1,7 @@
 """Fail-closed settings for a TLS-terminating, trusted production deployment."""
 
 import os
+from ipaddress import ip_address
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -118,3 +119,19 @@ STORAGES = {
 # from the actual TLS connection. Otherwise forwarded headers are untrusted.
 if os.environ.get("TRUSTED_PROXY_SSL_HEADER", "False").lower() == "true":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+if AI_CHAT_ENABLED:
+    OLLAMA_BASE_URL = required("OLLAMA_BASE_URL").rstrip("/")
+    model_url = urlsplit(OLLAMA_BASE_URL)
+    if model_url.scheme not in {"http", "https"} or not model_url.hostname or model_url.username or model_url.password or model_url.path or model_url.query or model_url.fragment:
+        raise ImproperlyConfigured("OLLAMA_BASE_URL must be a private Ollama origin.")
+    try:
+        address = ip_address(model_url.hostname)
+        private_model_host = address.is_private and not address.is_loopback and not address.is_link_local
+    except ValueError:
+        private_model_host = model_url.hostname.endswith((".internal", ".local")) or (
+            model_url.hostname.startswith("internal-") and model_url.hostname.endswith(".elb.amazonaws.com")
+        )
+    if not private_model_host:
+        raise ImproperlyConfigured("Production Ollama must run on a separate private service.")
+    OLLAMA_MODEL = required("OLLAMA_MODEL")
