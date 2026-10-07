@@ -81,6 +81,35 @@ def test_production_rejects_missing_database_ca_bundle():
     assert "existing CA bundle" in result.stderr
 
 
+def test_production_chat_rejects_localhost_model_service():
+    result = load_production({
+        "AI_CHAT_ENABLED": "True",
+        "OLLAMA_BASE_URL": "http://127.0.0.1:11434",
+        "OLLAMA_MODEL": "llama3.2:3b",
+    })
+    assert result.returncode != 0
+    assert "separate private service" in result.stderr
+
+
+def test_production_chat_accepts_private_model_service():
+    result = load_production({
+        "AI_CHAT_ENABLED": "True",
+        "OLLAMA_BASE_URL": "http://ollama.service.internal:11434",
+        "OLLAMA_MODEL": "llama3.2:3b",
+    })
+    assert result.returncode == 0, result.stderr
+
+
+def test_production_chat_rejects_public_model_service():
+    result = load_production({
+        "AI_CHAT_ENABLED": "True",
+        "OLLAMA_BASE_URL": "https://model.example.com",
+        "OLLAMA_MODEL": "llama3.2:3b",
+    })
+    assert result.returncode != 0
+    assert "separate private service" in result.stderr
+
+
 def test_production_rejects_file_email_backend():
     result = load_production({"EMAIL_BACKEND": "django.core.mail.backends.filebased.EmailBackend"})
     assert result.returncode != 0

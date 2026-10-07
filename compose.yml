@@ -39,6 +39,17 @@ services:
       timeout: 3s
       retries: 10
 
+  ollama:
+    image: ollama/ollama:0.40.0
+    profiles:
+      - ai
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
 volumes:
   postgres_data:
   redis_data:
+  ollama_data:

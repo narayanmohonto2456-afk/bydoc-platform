@@ -54,6 +54,7 @@ LOCAL_APPS = [
     "apps.notifications",
     "apps.support.apps.SupportConfig",
     "apps.preferences.apps.PreferencesConfig",
+    "apps.chatbot.apps.ChatbotConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -290,3 +291,9 @@ GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="SehatSaathi <noreply@localhost>")
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.filebased.EmailBackend")
 EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", default=str(BASE_DIR / "local-email"))
+
+# The patient assistant calls a locally hosted Ollama service. It never receives
+# account, appointment, or profile records automatically.
+AI_CHAT_ENABLED = env.bool("AI_CHAT_ENABLED", default=False)
+OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://127.0.0.1:11434").rstrip("/")
+OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3.2:3b")

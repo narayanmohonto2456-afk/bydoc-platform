@@ -10,6 +10,8 @@ The patient frontend does not yet provide doctor discovery, booking, notificatio
 
 An [AWS deployment design and release runbook](docs/aws-deployment.md) describes the proposed production environment, required secrets, container builds, release checks, and remaining launch gates. The backend has fail-closed production settings and a deployable container image; the frontend has a standalone container image. No AWS infrastructure has been provisioned from this repository.
 
+The patient interface includes a [local AI guide](docs/ai-assistant.md) for account and app questions. It uses Ollama when enabled and keeps the model private. It cannot give medical advice or change bookings.
+
 The latest frontend and sign-in work is on `feat/email-google-auth`, built on `feat/frontend-experience`. Those branches are pushed to GitHub but are not merged into `main`.
 
 Next milestones are the patient discovery and booking journey, receptionist clinic operations, broader language and accessibility coverage, and launch hardening. The August 2026 planning drafts list phone OTP as a P0 requirement; the current app uses email/password with optional Google sign-in. That product decision needs to be reconciled before treating the original plan as complete.
