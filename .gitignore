@@ -4,6 +4,7 @@
 !.env.example
 !**/.env.example
 *.pem
+!backend/certs/rds-global-bundle.pem
 *.key
 *.crt
 secrets/

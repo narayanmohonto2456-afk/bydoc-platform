@@ -1,72 +1,87 @@
 # SehatSaathi Platform
 
-SehatSaathi is a multilingual, low-data healthcare discovery and outpatient appointment platform for patients, caregivers, clinics, doctors, and authorized community agents.
-
-> SehatSaathi is a working name. Branding must remain configurable and separate from appointment, identity, clinic, verification, and permission logic.
+SehatSaathi is a healthcare discovery and outpatient appointment project for patients, caregivers, clinics, and doctors. The name is provisional. Essential patient access is planned to be free; patients initially pay the provider's declared consultation fee directly to the provider.
 
 ## Current status
 
-Production development foundation is in progress.
+The Django backend has organization and clinic models, doctor profiles and verification data, appointment slots and race-safe booking, a notification outbox and inbox, support cases, preferences, patient accounts, verified email recovery, and a patient profile API. The Next.js frontend currently covers account registration, email or username sign-in, optional Google sign-in, email verification, password reset, and profile editing.
 
-The existing UI is a concept prototype. It is not connected to production authentication, PostgreSQL, clinic authorization, provider verification, notifications, or appointment concurrency controls.
+The patient frontend does not yet provide doctor discovery, booking, notifications, or support screens. Clinic staff workflows, full frontend translations, production email delivery, deployment, monitoring, and backup restoration still need work. This repository is **not production ready**. The older interactive concept prototype is a design reference, not evidence of a live booking flow.
 
-## Project priorities
+An [AWS deployment design and release runbook](docs/aws-deployment.md) describes the proposed production environment, required secrets, container builds, release checks, and remaining launch gates. The backend has fail-closed production settings and a deployable container image; the frontend has a standalone container image. No AWS infrastructure has been provisioned from this repository.
 
-When decisions conflict, follow this order:
+The latest frontend and sign-in work is on `feat/email-google-auth`, built on `feat/frontend-experience`. Those branches are pushed to GitHub but are not merged into `main`.
 
-1. Patient safety and applicable law
-2. Privacy and security
-3. Appointment and data integrity
-4. Approved product requirements
-5. Approved architecture
-6. Project rules
-7. Delivery and design convenience
+Next milestones are the patient discovery and booking journey, receptionist clinic operations, broader language and accessibility coverage, and launch hardening. The August 2026 planning drafts list phone OTP as a P0 requirement; the current app uses email/password with optional Google sign-in. That product decision needs to be reconciled before treating the original plan as complete.
 
-## Initial technology
+## Local setup (Windows PowerShell)
 
-- Python and Django
-- Django REST Framework
-- PostgreSQL
-- Redis and Celery
-- Next.js and React
-- Docker
-- Reverse proxy, load balancer, and API gateway
-- Private object storage
+Run these commands from the repository root unless a step changes directory. Install Python, Node.js, and Docker Desktop first. Docker Desktop must be running.
 
-## Repository structure
+1. Create a local configuration file, set a development database password, and start PostgreSQL and Redis:
 
-- `backend/` — Django, DRF, domain services and background workers
-- `frontend/` — Next.js patient and clinic applications
-- `infrastructure/` — Docker, proxy and deployment configuration
-- `docs/` — Product and technical documentation
-- `scripts/` — Development and operational scripts
-- `.github/workflows/` — Automated checks
+   ```powershell
+   if (!(Test-Path .env)) { Copy-Item .env.example .env }
+   # Edit .env and replace the sample local secrets before starting the services.
+   docker compose up -d postgres redis
+   docker compose ps
+   ```
 
-## Initial business model
+2. Start the API in a separate terminal:
 
-Essential patient access is free during the initial launch.
+   ```powershell
+   cd backend
+   python -m venv venv
+   .\venv\Scripts\python.exe -m pip install -r requirements/development.txt
+   .\venv\Scripts\python.exe manage.py migrate
+   .\venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
+   ```
 
-Patients initially pay only the provider's declared consultation fee directly to the provider. SehatSaathi does not initially collect the consultation payment.
+3. Start the patient frontend in another terminal:
 
-## Product boundary
+   ```powershell
+   cd frontend
+   if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
+   npm.cmd ci
+   npm.cmd run dev
+   ```
 
-The MVP is not:
+Open `http://localhost:3000`. Use `localhost` consistently in the browser so the development session cookie and CSRF flow work. The API is at `http://localhost:8000/api/v1/`; liveness and readiness endpoints are under `/health/`.
 
-- A diagnosis system
-- A treatment recommendation system
-- An emergency service
-- A prescription or medical-record system
-- An insurance, pharmacy or laboratory platform
+Email verification and password reset requests need a Celery worker and Beat to deliver their links. Development mail is written to `backend/local-email`. See [patient frontend setup](docs/patient-frontend.md) for the worker commands and [account recovery](docs/account-recovery.md) for delivery behavior.
 
-## Security
+Google sign-in is optional and stays in a setup state until a Google web client ID is configured in both the root `.env` (`GOOGLE_OAUTH_CLIENT_ID`) and `frontend/.env.local` (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`). See [email and Google sign-in](docs/email-google-sign-in.md) for setup and account linking. Do not put a Google client secret in the frontend.
 
-Never commit:
+## Checks
 
-- `.env` files
-- Passwords or API keys
-- OTP values
-- Patient or clinic production data
-- Verification documents
-- Database backups
+With PostgreSQL and Redis running, from `backend`:
 
-Use `.env.example` only as a safe configuration template.
+```powershell
+.\venv\Scripts\python.exe manage.py check
+.\venv\Scripts\python.exe manage.py makemigrations --check --dry-run
+.\venv\Scripts\python.exe -m pytest -q
+```
+
+From `frontend`:
+
+```powershell
+npm.cmd run typecheck
+npm.cmd run build
+```
+
+Backend CI also compiles translation catalogs and validates the OpenAPI schema. The current translated backend messages do not represent a complete Bengali or Hindi interface.
+Frontend CI typechecks and builds the standalone server with an example HTTPS API origin.
+
+## Project boundaries
+
+PostgreSQL is the source of truth for appointment state. A selected slot or sent notification must never be presented as a confirmed booking without an authoritative confirmed appointment. Clinic and patient data require scoped authorization.
+
+The initial product is not a diagnosis, treatment, emergency, prescription, medical-record, or consultation-payment service. Keep secrets, patient data, verification documents, local mail, virtual environments, and database backups out of Git.
+
+## Repository guide
+
+- `backend/` — Django API, domain models and services, Celery workers, and tests.
+- `frontend/` — Next.js patient account interface.
+- `docs/` — Current implementation and setup notes.
+- `compose.yml` — Local PostgreSQL and Redis services.
+- `.github/workflows/` — Backend CI.

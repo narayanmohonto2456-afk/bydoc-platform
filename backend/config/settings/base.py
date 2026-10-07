@@ -1,7 +1,7 @@
+import os
 from pathlib import Path
 
 import environ
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 PROJECT_ROOT = BASE_DIR.parent
@@ -12,7 +12,7 @@ env = environ.Env(
 
 environment_file = PROJECT_ROOT / ".env"
 
-if environment_file.exists():
+if environment_file.exists() and os.environ.get("DJANGO_SETTINGS_MODULE") != "config.settings.production":
     environ.Env.read_env(environment_file)
 
 
