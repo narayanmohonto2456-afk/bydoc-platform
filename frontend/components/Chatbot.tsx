@@ -87,14 +87,14 @@ export function Chatbot() {
   }
 
   return <div className="chatbot-root">
-    {open && <section id="chatbot-panel" className="chatbot-panel" role="dialog" aria-label="SehatSaathi assistant">
+    {open && <section id="chatbot-panel" className="chatbot-panel" role="dialog" aria-label="BYdoc assistant">
       <div className="chatbot-heading">
         <div className="chatbot-avatar" aria-hidden="true">✳</div>
-        <div><strong>SehatSaathi guide</strong><small>Help with your account and app</small></div>
+        <div><strong>BYdoc guide</strong><small>Help with your account and app</small></div>
         <button type="button" className="chatbot-close" aria-label="Close assistant" onClick={() => setOpen(false)}>×</button>
       </div>
       <div className="chatbot-body" ref={bodyRef} aria-live="polite" aria-relevant="additions text">
-        <p className="chatbot-intro">Hi! I can help you find your way around SehatSaathi. I cannot give medical advice or change an appointment.</p>
+        <p className="chatbot-intro">Hi! I can help you find your way around BYdoc. I cannot give medical advice or change an appointment.</p>
         <p className="chatbot-privacy">Please do not share passwords, codes, or sensitive health details here.</p>
         {!loading && !user && <div className="chatbot-links">Sign in to use AI chat. <Link href="/login" onClick={() => setOpen(false)}>Sign in</Link> · <Link href="/register" onClick={() => setOpen(false)}>Create account</Link></div>}
         {user && enabled === false && <p className="chatbot-offline">The local AI model is not connected yet. You can still use the links below.</p>}
@@ -106,14 +106,14 @@ export function Chatbot() {
       </div>}
       <div className="chatbot-quicklinks"><Link href="/account" onClick={() => setOpen(false)}>My account</Link><Link href="/forgot-password" onClick={() => setOpen(false)}>Reset password</Link></div>
       <form className="chatbot-form" onSubmit={submit}>
-        <label className="sr-only" htmlFor="chatbot-input">Ask the SehatSaathi guide</label>
+        <label className="sr-only" htmlFor="chatbot-input">Ask the BYdoc guide</label>
         <input id="chatbot-input" ref={inputRef} value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={600} placeholder={!user ? "Sign in to chat" : enabled ? "Ask about the app…" : "Chat is unavailable"} disabled={!user || !enabled || busy} />
         <button type="submit" aria-label="Send message" disabled={!draft.trim() || !user || !enabled || busy}>➤</button>
       </form>
       {error && <p className="chatbot-error" role="alert">{error}</p>}
     </section>}
     <button type="button" className="chatbot-toggle" aria-controls="chatbot-panel" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
-      <span aria-hidden="true">{open ? "×" : "✳"}</span><span>{open ? "Close help" : "Ask SehatSaathi"}</span>
+      <span aria-hidden="true">{open ? "×" : "✳"}</span><span>{open ? "Close help" : "Ask BYdoc"}</span>
     </button>
   </div>;
 }

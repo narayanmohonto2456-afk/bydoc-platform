@@ -13,8 +13,8 @@ export function Nav() {
 
   return <header className="site-header">
     <div className="shell header-row">
-      <Link href="/" className="brand" aria-label="SehatSaathi home" onClick={closeMenu}>
-        <span className="brand-mark" aria-hidden="true">+</span><span>Sehat<span className="brand-accent">Saathi</span></span>
+      <Link href="/" className="brand" aria-label="BYdoc home" onClick={closeMenu}>
+        <span className="brand-mark" aria-hidden="true">+</span><span>BY<span className="brand-accent">doc</span></span>
       </Link>
       <button className="menu-toggle" type="button" aria-controls="primary-navigation" aria-expanded={menuOpen} aria-label={menuOpen ? "Close menu" : "Open menu"} onClick={() => setMenuOpen(open => !open)}>
         <span /><span /><span />

@@ -51,7 +51,7 @@ def test_medical_question_gets_fixed_response_without_model_call(client, patient
     ("question", "expected"),
     [
         ("How can I reset my password?", "/forgot-password"),
-        ("Can I book an appointment yet?", "still being built"),
+        ("Can I book an appointment yet?", "/appointments"),
         ("How do I create an account?", "/register"),
         ("How do I sign in?", "/login"),
         ("Where can I edit my details?", "/account"),

@@ -9,14 +9,14 @@ The `/appointments` page searches active clinics and doctors with current verifi
 From the repository root, start PostgreSQL and Redis:
 
 ```powershell
-cd E:\start_up\sehatsaathi-platform
+cd E:\start_up\bydoc-platform
 docker compose up -d postgres redis
 ```
 
 From `backend`, run Django:
 
 ```powershell
-cd E:\start_up\sehatsaathi-platform\backend
+cd E:\start_up\bydoc-platform\backend
 python -m venv venv
 .\venv\Scripts\python.exe -m pip install -r requirements/development.txt
 .\venv\Scripts\python.exe manage.py migrate
@@ -26,7 +26,7 @@ python -m venv venv
 From `frontend`, install dependencies and start Next.js in another terminal:
 
 ```powershell
-cd E:\start_up\sehatsaathi-platform\frontend
+cd E:\start_up\bydoc-platform\frontend
 Copy-Item .env.example .env.local
 npm.cmd ci
 npm.cmd run dev
@@ -37,14 +37,14 @@ Open `http://localhost:3000`. Use `localhost` consistently for both frontend and
 Email requests are stored in PostgreSQL. To deliver local verification or reset links, run a Celery worker and Beat in separate backend terminals. Development mail is written under `backend/local-email` by default. Production email, HTTPS, and cookie settings require deployment configuration.
 
 ```powershell
-cd E:\start_up\sehatsaathi-platform\backend
+cd E:\start_up\bydoc-platform\backend
 .\venv\Scripts\python.exe -m celery -A config worker --loglevel=INFO --pool=solo --concurrency=1 --without-mingle --without-gossip
 ```
 
 Run Beat separately from `backend`:
 
 ```powershell
-.\venv\Scripts\python.exe -m celery -A config beat --loglevel=INFO --schedule "$env:TEMP\sehatsaathi-celerybeat-schedule"
+.\venv\Scripts\python.exe -m celery -A config beat --loglevel=INFO --schedule "$env:TEMP\bydoc-celerybeat-schedule"
 ```
 
 ## Checks

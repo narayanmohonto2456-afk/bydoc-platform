@@ -15,12 +15,12 @@ export default function HomePage() {
           </div>
           <p className="hero-caption"><span className="caption-check" aria-hidden="true">✓</span> Simple setup <span aria-hidden="true">·</span> Your details, your control</p>
         </div>
-        <div className="hero-visual" role="img" aria-label="Illustration preview of a SehatSaathi patient account">
+        <div className="hero-visual" role="img" aria-label="Illustration preview of a BYdoc patient account">
           <div className="visual-orbit orbit-one" /><div className="visual-orbit orbit-two" />
           <div className="visual-spark spark-one" aria-hidden="true">✦</div><div className="visual-spark spark-two" aria-hidden="true">✧</div>
           <div className="visual-card main-visual-card">
             <div className="visual-card-top"><span className="visual-logo">+</span><span>YOUR CARE SPACE</span><span className="visual-card-dots" aria-hidden="true">•••</span></div>
-            <div className="visual-card-body"><span className="visual-avatar" aria-hidden="true">✳</span><div><small>Welcome to SehatSaathi</small><strong>Care, made personal.</strong></div></div>
+            <div className="visual-card-body"><span className="visual-avatar" aria-hidden="true">✳</span><div><small>Welcome to BYdoc</small><strong>Care, made personal.</strong></div></div>
             <div className="visual-progress"><span>Getting ready</span><strong>01 / 03</strong></div>
             <div className="visual-progress-track"><span /></div>
             <div className="visual-card-foot"><span className="mini-check" aria-hidden="true">✓</span><span>Your health journey starts here</span></div>
@@ -36,7 +36,7 @@ export default function HomePage() {
         <div><span className="eyebrow">Here for the everyday moments</span><h2 id="comfort-heading">Good care begins before the appointment.</h2><p>Keep your information current and your account secure as we build the rest of your appointment experience.</p></div>
         <Link href="/register" className="button button-light">Create your account <span aria-hidden="true">↗</span></Link>
       </section>
-      <p className="site-note">SehatSaathi does not provide emergency care or medical advice. For emergencies, contact local emergency services.</p>
+      <p className="site-note">BYdoc does not provide emergency care or medical advice. For emergencies, contact local emergency services.</p>
     </div>
   </>;
 }

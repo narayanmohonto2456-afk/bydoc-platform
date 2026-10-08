@@ -197,6 +197,6 @@ export default function AppointmentsPage() {
         </>}
       </section>
     </div>}
-    <p className="site-note">SehatSaathi does not provide emergency care or medical advice. For emergencies, contact local emergency services.</p>
+    <p className="site-note">BYdoc does not provide emergency care or medical advice. For emergencies, contact local emergency services.</p>
   </div>;
 }

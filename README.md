@@ -1,6 +1,6 @@
-# SehatSaathi Platform
+# BYdoc Platform
 
-SehatSaathi is a healthcare discovery and outpatient appointment project for patients, caregivers, clinics, and doctors. The name is provisional. Essential patient access is planned to be free; patients initially pay the provider's declared consultation fee directly to the provider.
+BYdoc is a healthcare discovery and outpatient appointment project for patients, caregivers, clinics, and doctors. Essential patient access is planned to be free; patients initially pay the provider's declared consultation fee directly to the provider.
 
 ## Current status
 
@@ -14,13 +14,15 @@ The patient interface includes a [local AI guide](docs/ai-assistant.md) for acco
 
 Signed-in users have [separate patient, doctor, clinic, and platform-admin dashboards](docs/role-dashboards.md). The current dashboards show role-scoped summaries; booking and clinic operations remain future work.
 
-The latest frontend and sign-in work is on `feat/email-google-auth`, built on `feat/frontend-experience`. Those branches are pushed to GitHub but are not merged into `main`.
+The BYdoc rename is on `feat/bydoc-rebrand`, based on `feat/email-google-auth`. The rename and other feature work are pending review; `main` remains unchanged.
 
 Next milestones are receptionist clinic operations, patient booking management and support, broader language and accessibility coverage, and launch hardening. The August 2026 planning drafts list phone OTP as a P0 requirement; the current app uses email/password with optional Google sign-in. That product decision needs to be reconciled before treating the original plan as complete.
 
 ## Local setup (Windows PowerShell)
 
 Run these commands from the repository root unless a step changes directory. Install Python, Node.js, and Docker Desktop first. Docker Desktop must be running.
+
+Existing local installations retain their original PostgreSQL database and user. Their ignored `.env` pins the original Compose project name so Docker continues to use the same data volumes after the folder rename. New installations copied from `.env.example` use `bydoc-platform` and `bydoc` defaults. Do not overwrite an existing `.env` with the example file.
 
 1. Create a local configuration file, set a development database password, and start PostgreSQL and Redis:
 

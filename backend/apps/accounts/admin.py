@@ -37,7 +37,7 @@ class UserAdmin(DjangoUserAdmin):
 
     fieldsets = DjangoUserAdmin.fieldsets + (
         (
-            "SehatSaathi identity",
+            "BYdoc identity",
             {
                 "fields": (
                     "phone_number",

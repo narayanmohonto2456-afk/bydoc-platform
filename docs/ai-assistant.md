@@ -1,6 +1,6 @@
 # Local AI guide
 
-The SehatSaathi guide is a patient-facing chat widget for account and app navigation. It uses a self-hosted [Ollama chat API](https://docs.ollama.com/api/chat) with the `llama3.2:3b` local model by default. The model classifies questions into a small set of topics; the API returns reviewed answers for those topics. Model-generated prose is never shown to patients. There is no per-message model API fee. Running the model still needs local hardware or paid hosting resources. The chat is disabled until an operator starts Ollama and enables it.
+The BYdoc guide is a patient-facing chat widget for account and app navigation. It uses a self-hosted [Ollama chat API](https://docs.ollama.com/api/chat) with the `llama3.2:3b` local model by default. The model classifies questions into a small set of topics; the API returns reviewed answers for those topics. Model-generated prose is never shown to patients. There is no per-message model API fee. Running the model still needs local hardware or paid hosting resources. The chat is disabled until an operator starts Ollama and enables it.
 
 ## Local setup
 

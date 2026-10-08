@@ -66,7 +66,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       cache: "no-store",
     });
   } catch {
-    throw new ApiError(0, "Cannot reach SehatSaathi right now. Please try again.");
+    throw new ApiError(0, "Cannot reach BYdoc right now. Please try again.");
   }
   if (response.status === 204) return undefined as T;
   const data: unknown = await response.json().catch(() => null);

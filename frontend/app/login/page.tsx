@@ -41,6 +41,6 @@ export default function LoginPage() {
     </form>
     <div className="auth-divider"><span>or</span></div>
     <GoogleButton onCredential={async credential => { await googleLogin(credential); router.replace("/dashboard"); }} />
-    <div className="divider" /><p>New to SehatSaathi? <Link href="/register">Create an account</Link>.</p>
+    <div className="divider" /><p>New to BYdoc? <Link href="/register">Create an account</Link>.</p>
   </div></div>;
 }

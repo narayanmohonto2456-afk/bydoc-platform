@@ -5,7 +5,7 @@ import { Chatbot } from "@/components/Chatbot";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SehatSaathi",
+  title: "BYdoc",
   description: "Find care and manage your outpatient appointments.",
 };
 
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <Nav />
           <main id="main-content">{children}</main>
           <Chatbot />
-          <footer className="site-footer"><div className="shell footer-row"><span className="footer-brand">SehatSaathi <span aria-hidden="true">✳</span></span><span>Thoughtful care starts here.</span><span>© {new Date().getFullYear()} SehatSaathi</span></div></footer>
+          <footer className="site-footer"><div className="shell footer-row"><span className="footer-brand">BYdoc <span aria-hidden="true">✳</span></span><span>Thoughtful care starts here.</span><span>© {new Date().getFullYear()} BYdoc</span></div></footer>
         </AuthProvider>
       </body>
     </html>
