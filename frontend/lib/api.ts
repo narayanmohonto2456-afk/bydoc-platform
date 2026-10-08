@@ -17,6 +17,10 @@ export type PatientProfile = {
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
 
+export function administrationUrl(): string {
+  return new URL("/admin/", apiBase).toString();
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);

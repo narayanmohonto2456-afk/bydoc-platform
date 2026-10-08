@@ -21,7 +21,7 @@ export default function LoginPage() {
     setBusy(true);
     try {
       await login(identifier, password);
-      router.replace("/account");
+      router.replace("/dashboard");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not sign in.");
     } finally {
@@ -40,7 +40,7 @@ export default function LoginPage() {
       <div className="form-actions"><button className="button" disabled={busy}>{busy ? "Signing in…" : "Sign in"}</button><Link href="/forgot-password">Forgot password?</Link></div>
     </form>
     <div className="auth-divider"><span>or</span></div>
-    <GoogleButton onCredential={async credential => { await googleLogin(credential); router.replace("/account"); }} />
+    <GoogleButton onCredential={async credential => { await googleLogin(credential); router.replace("/dashboard"); }} />
     <div className="divider" /><p>New to SehatSaathi? <Link href="/register">Create an account</Link>.</p>
   </div></div>;
 }
