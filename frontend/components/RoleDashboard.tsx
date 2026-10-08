@@ -94,9 +94,9 @@ function PatientContent({ data }: { data: PatientOverview }) {
   return <>
     <div className="dashboard-stats"><Stat value={data.upcoming_count} label="Upcoming visits" /><Stat value={data.open_support_count} label="Support cases in progress" /></div>
     <section className="panel dashboard-section" aria-labelledby="patient-appointments-heading">
-      <div className="dashboard-section-heading"><div><span className="eyebrow">Your care journey</span><h2 id="patient-appointments-heading">Appointments</h2></div><Link className="button button-secondary" href="/account">Account settings</Link></div>
+      <div className="dashboard-section-heading"><div><span className="eyebrow">Your care journey</span><h2 id="patient-appointments-heading">Appointments</h2></div><Link className="button" href="/appointments">Find a doctor</Link></div>
       <AppointmentList appointments={data.appointments} />
-      <p className="dashboard-note">Doctor search and new online bookings are still being built. Appointment status shown here comes from your booking record.</p>
+      <p className="dashboard-note">Appointment status shown here comes from your booking record. <Link href="/account">Update account settings</Link>.</p>
     </section>
   </>;
 }

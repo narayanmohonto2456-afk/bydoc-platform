@@ -3,6 +3,7 @@ import uuid
 from django.conf import settings
 from django.db import models
 from django.db.models import F, Q
+from django.utils import timezone
 
 from apps.doctors.models import DoctorClinicAffiliation
 
@@ -131,10 +132,14 @@ class ScheduleException(models.Model):
 class AppointmentSlotQuerySet(models.QuerySet):
     def available(self):
         return self.filter(
+            Q(affiliation__doctor__registrations__valid_until__isnull=True)
+            | Q(affiliation__doctor__registrations__valid_until__gte=timezone.localdate()),
             status=AppointmentSlot.Status.OPEN,
             affiliation__status=DoctorClinicAffiliation.Status.ACTIVE,
             affiliation__accepts_online_bookings=True,
-        )
+            affiliation__doctor__status="active",
+            affiliation__doctor__registrations__verification_status="verified",
+        ).distinct()
 
 
 class AppointmentSlot(models.Model):

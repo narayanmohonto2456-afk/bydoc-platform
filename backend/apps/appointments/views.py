@@ -8,10 +8,12 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.clinics.models import Clinic
+from apps.doctors.models import DoctorClinicAffiliation, DoctorProfile, DoctorRegistration
 
 from .models import Appointment, AppointmentSlot
 from .serializers import (
@@ -19,6 +21,7 @@ from .serializers import (
     BookAppointmentSerializer,
     CancelAppointmentSerializer,
     PublicAppointmentSlotSerializer,
+    PublicProviderSerializer,
     SlotHoldSerializer,
 )
 from .services import (
@@ -46,6 +49,51 @@ def parse_uuid_parameter(value, parameter_name):
                 )
             }
         ) from error
+
+
+class ProviderPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 50
+
+
+class PublicProviderListView(generics.ListAPIView):
+    """Only active clinics with an active, verified, bookable doctor."""
+
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = PublicProviderSerializer
+    pagination_class = ProviderPagination
+
+    def get_queryset(self):
+        query = self.request.query_params.get("q", "").strip()
+        district = self.request.query_params.get("district", "").strip()
+        if len(query) > 100 or len(district) > 120:
+            raise ValidationError({"detail": _("Search terms are too long.")})
+
+        queryset = DoctorClinicAffiliation.objects.filter(
+            Q(doctor__registrations__valid_until__isnull=True)
+            | Q(doctor__registrations__valid_until__gte=timezone.localdate()),
+            status=DoctorClinicAffiliation.Status.ACTIVE,
+            accepts_online_bookings=True,
+            doctor__status=DoctorProfile.Status.ACTIVE,
+            doctor__registrations__verification_status=DoctorRegistration.VerificationStatus.VERIFIED,
+            clinic__status=Clinic.Status.ACTIVE,
+            clinic__organization__status="active",
+        )
+        if query:
+            queryset = queryset.filter(
+                Q(doctor__display_name__icontains=query)
+                | Q(doctor__primary_specialty__name__icontains=query)
+                | Q(clinic__name__icontains=query)
+                | Q(clinic__locality__icontains=query)
+            )
+        if district:
+            queryset = queryset.filter(clinic__district__icontains=district)
+        return queryset.select_related(
+            "doctor", "doctor__primary_specialty", "clinic"
+        ).prefetch_related("doctor__languages").distinct().order_by(
+            "clinic__name", "doctor__display_name", "id"
+        )
 
 
 class PublicSlotListView(generics.ListAPIView):

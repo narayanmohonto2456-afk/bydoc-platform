@@ -15,6 +15,7 @@ from apps.clinics.models import Clinic
 from apps.doctors.models import (
     DoctorClinicAffiliation,
     DoctorProfile,
+    DoctorRegistration,
 )
 from apps.organizations.models import Organization
 
@@ -72,6 +73,15 @@ def create_confirmed_appointment(
         user=doctor_user,
         display_name="Dr Notification Test",
         status=DoctorProfile.Status.ACTIVE,
+    )
+    DoctorRegistration.objects.create(
+        doctor=doctor,
+        council_name="Test Council",
+        registration_number=doctor_user.username,
+        registered_name=doctor.display_name,
+        verification_status=DoctorRegistration.VerificationStatus.VERIFIED,
+        verified_at=timezone.now(),
+        verified_by=doctor_user,
     )
 
     affiliation = DoctorClinicAffiliation.objects.create(

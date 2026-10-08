@@ -1,6 +1,8 @@
 # Patient account frontend
 
-This Next.js application implements registration, email or username sign-in, configurable Google sign-in, patient profile editing, verified email request/confirmation, and password reset. It uses the existing Django session and CSRF APIs. See [email-google-sign-in.md](email-google-sign-in.md) for Google setup and account linking. It does not yet provide doctor discovery, booking, notifications, support, or full Bengali and Hindi interface translations.
+This Next.js application implements registration, email or username sign-in, configurable Google sign-in, patient profile editing, verified email request/confirmation, password reset, and doctor discovery with appointment booking. It uses the existing Django session and CSRF APIs. See [email-google-sign-in.md](email-google-sign-in.md) for Google setup and account linking. It does not yet provide patient notification or support screens, family-member booking, a cancellation UI, or full Bengali and Hindi interface translations.
+
+The `/appointments` page searches active clinics and doctors with current verified registrations. Patients can view open slots, review the declared fee, hold a slot for a short period, and confirm a booking. The page shows confirmed status only from the booking API response. If confirmation is interrupted, it retains the same booking request ID for an idempotent retry. The backend checks doctor verification at slot lookup and again when holding or booking. Payments are made directly to the clinic.
 
 ## Local setup on Windows
 

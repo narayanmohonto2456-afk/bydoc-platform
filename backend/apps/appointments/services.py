@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.db.models import Q
 
 from apps.clinics.models import Clinic
-from apps.doctors.models import DoctorClinicAffiliation
+from apps.doctors.models import DoctorClinicAffiliation, DoctorProfile, DoctorRegistration
 from apps.organizations.models import (
     Organization,
     OrganizationMembership,
@@ -79,6 +79,17 @@ def _validate_slot_eligibility(slot):
     affiliation = slot.affiliation
     clinic = affiliation.clinic
     organization = clinic.organization
+
+    if (
+        affiliation.doctor.status != DoctorProfile.Status.ACTIVE
+        or not DoctorRegistration.objects.filter(
+            doctor=affiliation.doctor,
+            verification_status=DoctorRegistration.VerificationStatus.VERIFIED,
+        ).filter(
+            Q(valid_until__isnull=True) | Q(valid_until__gte=timezone.localdate())
+        ).exists()
+    ):
+        raise SlotUnavailableError(_("The doctor is not currently verified for booking."))
 
     if (
         affiliation.status

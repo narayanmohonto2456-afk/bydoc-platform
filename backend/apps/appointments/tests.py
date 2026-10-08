@@ -10,6 +10,7 @@ from apps.clinics.models import Clinic
 from apps.doctors.models import (
     DoctorClinicAffiliation,
     DoctorProfile,
+    DoctorRegistration,
 )
 from apps.organizations.models import (
     Organization,
@@ -73,6 +74,15 @@ def create_affiliation():
         user=doctor_user,
         display_name="Dr Appointment",
         status=DoctorProfile.Status.ACTIVE,
+    )
+    DoctorRegistration.objects.create(
+        doctor=doctor,
+        council_name="Test Council",
+        registration_number="appointment-doctor",
+        registered_name=doctor.display_name,
+        verification_status=DoctorRegistration.VerificationStatus.VERIFIED,
+        verified_at=timezone.now(),
+        verified_by=doctor_user,
     )
 
     return DoctorClinicAffiliation.objects.create(

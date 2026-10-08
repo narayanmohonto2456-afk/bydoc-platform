@@ -6,6 +6,7 @@ from .views import (
     HoldSlotView,
     MyAppointmentListView,
     PublicSlotListView,
+    PublicProviderListView,
 )
 
 
@@ -13,6 +14,7 @@ app_name = "appointments"
 
 
 urlpatterns = [
+    path("providers/", PublicProviderListView.as_view(), name="provider-list"),
     path(
         "slots/",
         PublicSlotListView.as_view(),

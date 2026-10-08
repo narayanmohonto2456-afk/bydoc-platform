@@ -1,6 +1,37 @@
 from rest_framework import serializers
 
+from apps.doctors.models import DoctorClinicAffiliation
+
 from .models import Appointment, AppointmentSlot
+
+
+class PublicProviderSerializer(serializers.ModelSerializer):
+    doctor_id = serializers.UUIDField(read_only=True)
+    doctor_name = serializers.CharField(source="doctor.display_name", read_only=True)
+    specialty = serializers.CharField(source="doctor.primary_specialty.name", read_only=True, allow_null=True)
+    languages = serializers.SerializerMethodField()
+    clinic_id = serializers.UUIDField(read_only=True)
+    clinic_name = serializers.CharField(source="clinic.name", read_only=True)
+    locality = serializers.CharField(source="clinic.locality", read_only=True)
+    district = serializers.CharField(source="clinic.district", read_only=True)
+    state = serializers.CharField(source="clinic.state", read_only=True)
+    address = serializers.CharField(source="clinic.address_line_1", read_only=True)
+    timezone = serializers.CharField(source="clinic.timezone", read_only=True)
+    fee_updated_at = serializers.DateTimeField(read_only=True)
+    schedule_updated_at = serializers.DateTimeField(source="clinic.schedule_updated_at", read_only=True, allow_null=True)
+
+    def get_languages(self, obj) -> list[str]:
+        return [language.name for language in obj.doctor.languages.all()]
+
+    class Meta:
+        model = DoctorClinicAffiliation
+        fields = (
+            "id", "doctor_id", "doctor_name", "specialty", "languages",
+            "clinic_id", "clinic_name", "locality", "district", "state",
+            "address", "timezone", "consultation_fee", "currency_code",
+            "fee_updated_at", "schedule_updated_at",
+        )
+        read_only_fields = fields
 
 
 class PublicAppointmentSlotSerializer(

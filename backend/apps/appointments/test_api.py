@@ -12,6 +12,7 @@ from apps.clinics.models import Clinic
 from apps.doctors.models import (
     DoctorClinicAffiliation,
     DoctorProfile,
+    DoctorRegistration,
 )
 from apps.organizations.models import Organization
 
@@ -61,6 +62,15 @@ def create_affiliation(
         display_name=f"Dr {doctor_username}",
         status=DoctorProfile.Status.ACTIVE,
     )
+    DoctorRegistration.objects.create(
+        doctor=doctor,
+        council_name="Test Council",
+        registration_number=doctor_username,
+        registered_name=doctor.display_name,
+        verification_status=DoctorRegistration.VerificationStatus.VERIFIED,
+        verified_at=timezone.now(),
+        verified_by=doctor_user,
+    )
 
     affiliation = DoctorClinicAffiliation.objects.create(
         doctor=doctor,
@@ -108,6 +118,53 @@ def slot_local_date(slot):
     return slot.starts_at.astimezone(
         clinic_timezone
     ).date()
+
+
+def test_public_provider_search_only_shows_verified_bookable_affiliations():
+    visible = create_affiliation()
+    hidden = create_affiliation(
+        organization_slug="hidden-organization",
+        clinic_slug="hidden-clinic",
+        doctor_username="hidden-doctor",
+    )
+    DoctorRegistration.objects.filter(doctor=hidden.doctor).update(
+        verification_status=DoctorRegistration.VerificationStatus.REVOKED,
+        verified_at=None,
+        verified_by=None,
+    )
+
+    response = APIClient().get(
+        reverse("appointments:provider-list"), {"q": "api-doctor", "district": "Kolkata"}
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["count"] == 1
+    assert response.data["results"][0]["id"] == str(visible.id)
+    assert response.data["results"][0]["clinic_name"] == visible.clinic.name
+    assert "registration_number" not in response.data["results"][0]
+
+
+def test_revoked_registration_hides_slot_and_prevents_direct_hold():
+    affiliation = create_affiliation()
+    slot = create_future_slot(affiliation)
+    DoctorRegistration.objects.filter(doctor=affiliation.doctor).update(
+        verification_status=DoctorRegistration.VerificationStatus.REVOKED,
+        verified_at=None,
+        verified_by=None,
+    )
+    client = APIClient()
+    listing = client.get(
+        reverse("appointments:slot-list"),
+        {"clinic_id": affiliation.clinic_id, "date": slot_local_date(slot).isoformat()},
+    )
+    assert listing.status_code == status.HTTP_200_OK
+    assert response_items(listing) == []
+
+    client.force_authenticate(user=create_user("revoked-slot-patient"))
+    hold = client.post(reverse("appointments:slot-hold", kwargs={"slot_id": slot.id}), {}, format="json")
+    assert hold.status_code == status.HTTP_409_CONFLICT
+    slot.refresh_from_db()
+    assert slot.status == AppointmentSlot.Status.OPEN
 
 
 def test_public_slot_list_requires_clinic_and_date():
