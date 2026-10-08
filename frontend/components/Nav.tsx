@@ -21,7 +21,10 @@ export function Nav() {
       </button>
       <nav id="primary-navigation" aria-label="Main navigation" className={`nav-links${menuOpen ? " nav-open" : ""}`}>
         <Link href="/" aria-current={pathname === "/" ? "page" : undefined} onClick={closeMenu}>Home</Link>
-        {!loading && (user ? <Link href="/account" aria-current={pathname === "/account" ? "page" : undefined} onClick={closeMenu}>My account</Link> : <>
+        {!loading && (user ? <>
+          <Link href="/dashboard" aria-current={pathname.startsWith("/dashboard") ? "page" : undefined} onClick={closeMenu}>Dashboard</Link>
+          <Link href="/account" aria-current={pathname === "/account" ? "page" : undefined} onClick={closeMenu}>Account settings</Link>
+        </> : <>
           <Link href="/login" aria-current={pathname === "/login" ? "page" : undefined} onClick={closeMenu}>Sign in</Link>
           <Link href="/register" className="nav-cta" aria-current={pathname === "/register" ? "page" : undefined} onClick={closeMenu}>Get started <span aria-hidden="true">↗</span></Link>
         </>)}

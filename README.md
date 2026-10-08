@@ -12,6 +12,8 @@ An [AWS deployment design and release runbook](docs/aws-deployment.md) describes
 
 The patient interface includes a [local AI guide](docs/ai-assistant.md) for account and app questions. It uses Ollama when enabled and keeps the model private. It cannot give medical advice or change bookings.
 
+Signed-in users have [separate patient, doctor, clinic, and platform-admin dashboards](docs/role-dashboards.md). The current dashboards show role-scoped summaries; booking and clinic operations remain future work.
+
 The latest frontend and sign-in work is on `feat/email-google-auth`, built on `feat/frontend-experience`. Those branches are pushed to GitHub but are not merged into `main`.
 
 Next milestones are the patient discovery and booking journey, receptionist clinic operations, broader language and accessibility coverage, and launch hardening. The August 2026 planning drafts list phone OTP as a P0 requirement; the current app uses email/password with optional Google sign-in. That product decision needs to be reconciled before treating the original plan as complete.
