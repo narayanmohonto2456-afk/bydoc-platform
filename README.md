@@ -4,9 +4,9 @@ SehatSaathi is a healthcare discovery and outpatient appointment project for pat
 
 ## Current status
 
-The Django backend has organization and clinic models, doctor profiles and verification data, appointment slots and race-safe booking, a notification outbox and inbox, support cases, preferences, patient accounts, verified email recovery, and a patient profile API. The Next.js frontend currently covers account registration, email or username sign-in, optional Google sign-in, email verification, password reset, and profile editing.
+The Django backend has organization and clinic models, doctor profiles and verification data, appointment slots and race-safe booking, a notification outbox and inbox, support cases, preferences, patient accounts, verified email recovery, and a patient profile API. The Next.js frontend covers account registration, email or username sign-in, optional Google sign-in, email verification, password reset, profile editing, and patient discovery and booking.
 
-The patient frontend does not yet provide doctor discovery, booking, notifications, or support screens. Clinic staff workflows, full frontend translations, production email delivery, deployment, monitoring, and backup restoration still need work. This repository is **not production ready**. The older interactive concept prototype is a design reference, not evidence of a live booking flow.
+The patient frontend now provides verified doctor and clinic discovery plus an online booking flow with live slots, a short hold, fee review, and server-confirmed appointment status. It does not yet provide patient notification or support screens, family-member booking, or a cancellation UI. Clinic staff workflows, full frontend translations, production email delivery, deployment, monitoring, and backup restoration still need work. This repository is **not production ready**.
 
 An [AWS deployment design and release runbook](docs/aws-deployment.md) describes the proposed production environment, required secrets, container builds, release checks, and remaining launch gates. The backend has fail-closed production settings and a deployable container image; the frontend has a standalone container image. No AWS infrastructure has been provisioned from this repository.
 
@@ -16,7 +16,7 @@ Signed-in users have [separate patient, doctor, clinic, and platform-admin dashb
 
 The latest frontend and sign-in work is on `feat/email-google-auth`, built on `feat/frontend-experience`. Those branches are pushed to GitHub but are not merged into `main`.
 
-Next milestones are the patient discovery and booking journey, receptionist clinic operations, broader language and accessibility coverage, and launch hardening. The August 2026 planning drafts list phone OTP as a P0 requirement; the current app uses email/password with optional Google sign-in. That product decision needs to be reconciled before treating the original plan as complete.
+Next milestones are receptionist clinic operations, patient booking management and support, broader language and accessibility coverage, and launch hardening. The August 2026 planning drafts list phone OTP as a P0 requirement; the current app uses email/password with optional Google sign-in. That product decision needs to be reconciled before treating the original plan as complete.
 
 ## Local setup (Windows PowerShell)
 

@@ -21,6 +21,7 @@ export function Nav() {
       </button>
       <nav id="primary-navigation" aria-label="Main navigation" className={`nav-links${menuOpen ? " nav-open" : ""}`}>
         <Link href="/" aria-current={pathname === "/" ? "page" : undefined} onClick={closeMenu}>Home</Link>
+        <Link href="/appointments" aria-current={pathname === "/appointments" ? "page" : undefined} onClick={closeMenu}>Find care</Link>
         {!loading && (user ? <>
           <Link href="/dashboard" aria-current={pathname.startsWith("/dashboard") ? "page" : undefined} onClick={closeMenu}>Dashboard</Link>
           <Link href="/account" aria-current={pathname === "/account" ? "page" : undefined} onClick={closeMenu}>Account settings</Link>

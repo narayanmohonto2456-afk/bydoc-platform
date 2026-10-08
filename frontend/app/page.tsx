@@ -11,7 +11,7 @@ export default function HomePage() {
           <p className="lead">Make a home for your health details. Set up your account, stay connected, and feel ready for what comes next.</p>
           <div className="actions">
             <Link href="/register" className="button button-large">Get started <span aria-hidden="true">↗</span></Link>
-            <Link href="/login" className="button button-secondary button-large">I have an account</Link>
+            <Link href="/appointments" className="button button-secondary button-large">Find care</Link>
           </div>
           <p className="hero-caption"><span className="caption-check" aria-hidden="true">✓</span> Simple setup <span aria-hidden="true">·</span> Your details, your control</p>
         </div>
