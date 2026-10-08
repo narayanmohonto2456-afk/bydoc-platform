@@ -101,8 +101,8 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("POSTGRES_DB", default="sehatsaathi"),
-        "USER": env("POSTGRES_USER", default="sehatsaathi"),
+        "NAME": env("POSTGRES_DB", default="bydoc"),
+        "USER": env("POSTGRES_USER", default="bydoc"),
         "PASSWORD": env(
             "POSTGRES_PASSWORD",
             default="local-development-password",
@@ -188,8 +188,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    "TITLE": "SehatSaathi API",
-    "DESCRIPTION": "SehatSaathi platform API",
+    "TITLE": "BYdoc API",
+    "DESCRIPTION": "BYdoc platform API",
     "VERSION": "1.0.0",
     "ENUM_NAME_OVERRIDES": {
         "AppointmentStatusEnum": [
@@ -288,12 +288,13 @@ AUTH_RATE_LIMITS = {
 
 ACCOUNT_LINK_BASE_URL = env("ACCOUNT_LINK_BASE_URL", default="http://localhost:3000")
 GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="SehatSaathi <noreply@localhost>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="BYdoc <noreply@localhost>")
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.filebased.EmailBackend")
 EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", default=str(BASE_DIR / "local-email"))
 
-# The patient assistant calls a locally hosted Ollama service. It never receives
-# account, appointment, or profile records automatically.
+# Product guidance remains available when the optional local classifier is off.
+# The model never receives account, appointment, or profile records automatically.
+ASSISTANT_ENABLED = env.bool("ASSISTANT_ENABLED", default=True)
 AI_CHAT_ENABLED = env.bool("AI_CHAT_ENABLED", default=False)
 OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://127.0.0.1:11434").rstrip("/")
 OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3.2:3b")

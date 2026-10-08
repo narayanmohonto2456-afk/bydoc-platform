@@ -1,6 +1,6 @@
 # AWS deployment design and release runbook
 
-This is the target deployment for the current SehatSaathi code. It is a release plan, not evidence that AWS infrastructure or a production environment already exists. Choose the AWS Region and public domains before provisioning.
+This is the target deployment for the current BYdoc code. It is a release plan, not evidence that AWS infrastructure or a production environment already exists. Choose the AWS Region and public domains before provisioning.
 
 ## Architecture
 
@@ -25,11 +25,11 @@ The API image serves Django static assets through WhiteNoise. The web image is a
 Build images from the repository root and push immutable image tags to ECR. The public API URL and optional Google web client ID are embedded in the web build, so rebuild the web image when either changes.
 
 ```sh
-docker build -f backend/Dockerfile -t sehatsaathi-api:RELEASE_SHA backend
+docker build -f backend/Dockerfile -t bydoc-api:RELEASE_SHA backend
 docker build -f frontend/Dockerfile \
   --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.example.com/api/v1 \
   --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=YOUR_PUBLIC_CLIENT_ID \
-  -t sehatsaathi-web:RELEASE_SHA frontend
+  -t bydoc-web:RELEASE_SHA frontend
 ```
 
 Set `DJANGO_SETTINGS_MODULE=config.settings.production` on the API, worker, Beat, and migration tasks. The API image sets this by default. Set these environment values in the ECS task definition, replacing example domains:
@@ -47,7 +47,7 @@ Set `DJANGO_SETTINGS_MODULE=config.settings.production` on the API, worker, Beat
 | `EMAIL_BACKEND` | `django.core.mail.backends.smtp.EmailBackend`. |
 | `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS` | SES SMTP endpoint for the chosen Region, `587`, `True`. |
 | `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | SES SMTP credentials from Secrets Manager. |
-| `DEFAULT_FROM_EMAIL` | Verified sender, e.g. `SehatSaathi <no-reply@example.com>`. |
+| `DEFAULT_FROM_EMAIL` | Verified sender, e.g. `BYdoc <no-reply@example.com>`. |
 | `TRUSTED_PROXY_SSL_HEADER` | `True` only when the ALB is the sole inbound path to the API and its `X-Forwarded-Proto` behavior has been verified against a spoofed client header. |
 | `GOOGLE_OAUTH_CLIENT_ID` | Optional public Google web client ID, matching the web build. Configure authorized origins in Google Cloud. |
 
@@ -65,11 +65,11 @@ The AWS ALB checks `GET /health/ready/` on the API target group and `GET /` on t
 
 ## Launch gates still open
 
-The optional AI guide needs a separately operated private Ollama service and model volume; it is disabled by default. If enabled, use `AI_CHAT_ENABLED=true`, `OLLAMA_BASE_URL=http://ollama.service.internal:11434`, and `OLLAMA_MODEL=llama3.2:3b` on the API tasks. Allow network access only from the API tasks, review model capacity and logs, and complete the clinical safety review described in [the AI guide](ai-assistant.md). This self-hosted model has no usage-based API fee but consumes AWS compute and storage.
+The guided help and support-request chat is enabled by default through `ASSISTANT_ENABLED=true` and uses the existing support database and API. The optional AI topic classifier is disabled by default and needs a separately operated private Ollama service and model volume. To enable it, set `AI_CHAT_ENABLED=true`, `OLLAMA_BASE_URL=http://ollama.service.internal:11434`, and `OLLAMA_MODEL=llama3.2:3b` on the API tasks. Allow network access only from the API tasks, review model capacity and logs, and complete the clinical safety review described in [the AI guide](ai-assistant.md). If the model fails, reviewed product guidance continues. This self-hosted model has no usage-based API fee but consumes AWS compute and storage.
 
 - Production infrastructure as code, AWS account/Region/domains, budgets, IAM review, key rotation, and alert routing have not been configured in this repository.
 - Staff and administrator MFA, a permissions audit across patient and clinic endpoints, and an independent security review are required before handling real patient information. Google sign-in remains optional until a client ID is configured.
-- Patient discovery/booking screens and clinic operations are still incomplete. The historical product plan's phone OTP requirement conflicts with the current email/Google authentication choice and needs a product decision.
+- Patient booking management and clinic operations are still incomplete. The historical product plan's phone OTP requirement conflicts with the current email/Google authentication choice and needs a product decision.
 - File uploads and verification documents must use a private, encrypted object store with access controls and malware scanning before they are enabled. The current container filesystem is ephemeral.
 - Complete a staging restore drill, load/concurrency test, accessibility review, and incident response rehearsal before public launch.
 

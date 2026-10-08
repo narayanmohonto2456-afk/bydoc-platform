@@ -26,7 +26,7 @@ PRODUCTION_ENV = {
     "EMAIL_HOST_USER": "test-user",
     "EMAIL_HOST_PASSWORD": "test-password",
     "EMAIL_USE_TLS": "True",
-    "DEFAULT_FROM_EMAIL": "SehatSaathi <no-reply@example.com>",
+    "DEFAULT_FROM_EMAIL": "BYdoc <no-reply@example.com>",
 }
 
 

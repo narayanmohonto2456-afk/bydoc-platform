@@ -50,7 +50,7 @@ export function CareJourney() {
     <section className="journey section-wrap" aria-labelledby="journey-heading">
       <div className="section-heading">
         <div><span className="eyebrow">A better start</span><h2 id="journey-heading">Your care journey, one step at a time.</h2></div>
-        <p>Explore what you can do with your SehatSaathi account today.</p>
+        <p>Explore what you can do with your BYdoc account today.</p>
       </div>
       <div className="journey-layout">
         <div className="journey-tabs" role="tablist" aria-label="Account setup steps">

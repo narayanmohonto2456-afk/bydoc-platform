@@ -102,11 +102,11 @@ SECURE_REFERRER_POLICY = "same-origin"
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
-SESSION_COOKIE_NAME = "__Host-sehatsaathi-session"
+SESSION_COOKIE_NAME = "__Host-bydoc-session"
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = True
 CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_COOKIE_NAME = "__Host-sehatsaathi-csrf"
+CSRF_COOKIE_NAME = "__Host-bydoc-csrf"
 X_FRAME_OPTIONS = "DENY"
 MIDDLEWARE.insert(0, "apps.core.middleware.PrivateHealthCheckMiddleware")
 MIDDLEWARE.insert(2, "whitenoise.middleware.WhiteNoiseMiddleware")

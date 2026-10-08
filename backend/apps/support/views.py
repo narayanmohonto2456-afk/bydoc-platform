@@ -12,6 +12,7 @@ from apps.appointments.models import Appointment
 from apps.clinics.models import Clinic
 
 from .models import SupportCase
+from .limits import limit_support_submission
 from .serializers import (
     AddSupportCaseCommentSerializer,
     CreateSupportCaseSerializer,
@@ -75,6 +76,11 @@ class SupportCaseListCreateView(
             .order_by("-created_at")
         )
 
+        # The compact help widget requests only the caller's recent cases,
+        # including when that caller also has staff queue access.
+        if request.query_params.get("mine") == "1":
+            queryset = queryset.filter(requester=request.user)[:10]
+
         serializer = SupportCaseListSerializer(
             queryset,
             many=True,
@@ -104,6 +110,7 @@ class SupportCaseListCreateView(
             data=request.data
         )
         serializer.is_valid(raise_exception=True)
+        limit_support_submission(request.user.pk)
 
         clinic = None
         appointment = None

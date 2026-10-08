@@ -82,5 +82,5 @@ def deliver_one(record):
     base = settings.ACCOUNT_LINK_BASE_URL.rstrip("/")
     path = "verify-email" if record.purpose == AccountRecoveryRequest.Purpose.VERIFY else "reset-password"
     url = f"{base}/{path}#token={quote(token_for(record))}"
-    subject = "Verify your SehatSaathi email" if record.purpose == AccountRecoveryRequest.Purpose.VERIFY else "Reset your SehatSaathi password"
+    subject = "Verify your BYdoc email" if record.purpose == AccountRecoveryRequest.Purpose.VERIFY else "Reset your BYdoc password"
     send_mail(subject, f"Open this link within 30 minutes: {url}", settings.DEFAULT_FROM_EMAIL, [record.address])
