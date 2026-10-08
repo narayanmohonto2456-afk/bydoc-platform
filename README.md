@@ -1,4 +1,4 @@
-# SehatSaathi Platform
+# BYdoc Platform
 
 SehatSaathi is a healthcare discovery and outpatient appointment project for patients, caregivers, clinics, and doctors. The name is provisional. Essential patient access is planned to be free; patients initially pay the provider's declared consultation fee directly to the provider.
 
