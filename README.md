@@ -1,30 +1,28 @@
-# BYdoc Platform
+# BYdoc
 
-BYdoc is a healthcare discovery and outpatient appointment project for patients, caregivers, clinics, and doctors. Essential patient access is planned to be free; patients initially pay the provider's declared consultation fee directly to the provider.
+BYdoc is a healthcare discovery and outpatient appointment platform for patients, doctors, and clinics. Patients can find verified providers, review available slots and declared consultation fees, and receive a server-confirmed booking. The project includes separate role dashboards and an operational support flow.
 
-## Current status
+> **Project status:** Active development. The repository is not ready for public production deployment. See [Deployment readiness](#deployment-readiness) for the remaining work.
 
-The Django backend has organization and clinic models, doctor profiles and verification data, appointment slots and race-safe booking, a notification outbox and inbox, support cases, preferences, patient accounts, verified email recovery, and a patient profile API. The Next.js frontend covers account registration, email or username sign-in, optional Google sign-in, email verification, password reset, profile editing, and patient discovery and booking.
+## What works today
 
-The patient frontend now provides verified doctor and clinic discovery plus an online booking flow with live slots, a short hold, fee review, and server-confirmed appointment status. The help widget provides basic support requests and status; a full support inbox, patient notifications, family-member booking, and cancellation UI still need work. Clinic staff workflows, full frontend translations, production email delivery, deployment, monitoring, and backup restoration still need work. This repository is **not production ready**.
+| Area | Current implementation |
+| --- | --- |
+| Patient accounts | Registration, email or username sign-in, optional Google sign-in, email verification, password recovery, and profile editing. |
+| Discovery and booking | Verified doctor and clinic discovery, live slots, short holds, fee review, and idempotent booking confirmation. PostgreSQL is the source of truth for appointment status. |
+| Role dashboards | Separate patient, doctor, clinic, and platform-admin summaries with role-scoped data. |
+| Support | Guided help for app tasks, support request submission, case references and status, and staff case administration. Optional private AI classifies free-text topics; patients receive reviewed answers. |
+| Backend operations | Organization and clinic records, doctor verification data, notification outbox and inbox, preferences, audit-backed support cases, Celery jobs, and health checks. |
 
-An [AWS deployment design and release runbook](docs/aws-deployment.md) describes the proposed production environment, required secrets, container builds, release checks, and remaining launch gates. The backend has fail-closed production settings and a deployable container image; the frontend has a standalone container image. No AWS infrastructure has been provisioned from this repository.
+The frontend uses **Next.js**. The API and background jobs use **Django, Django REST Framework, and Celery**, with **PostgreSQL** for durable data and **Redis** for jobs and shared limits. Local development uses Docker Compose for PostgreSQL and Redis. The optional AI topic classifier uses a self-hosted Ollama service.
 
-The patient interface includes a [guided help and support chat](docs/ai-assistant.md) for booking and account navigation, support requests, and case tracking. An optional private Ollama model classifies free-text topics; reviewed answers remain available when it is off. The guide cannot give medical advice or change bookings.
+## Quick start (Windows PowerShell)
 
-Signed-in users have [separate patient, doctor, clinic, and platform-admin dashboards](docs/role-dashboards.md). The current dashboards show role-scoped summaries; booking and clinic operations remain future work.
+Prerequisites: Python 3.11, Node.js 22, and Docker Desktop. The commands below start from the repository root, with Docker Desktop running. These are the versions used in CI.
 
-The BYdoc rename is on `feat/bydoc-rebrand`, based on `feat/email-google-auth`. The rename and other feature work are pending review; `main` remains unchanged.
+**Existing installations:** Keep your current `.env`. It preserves the original Compose project name and database identifiers so the BYdoc folder rename does not disconnect existing Docker volumes. New installations use the values in `.env.example`.
 
-Next milestones are receptionist clinic operations, patient booking management and support, broader language and accessibility coverage, and launch hardening. The August 2026 planning drafts list phone OTP as a P0 requirement; the current app uses email/password with optional Google sign-in. That product decision needs to be reconciled before treating the original plan as complete.
-
-## Local setup (Windows PowerShell)
-
-Run these commands from the repository root unless a step changes directory. Install Python, Node.js, and Docker Desktop first. Docker Desktop must be running.
-
-Existing local installations retain their original PostgreSQL database and user. Their ignored `.env` pins the original Compose project name so Docker continues to use the same data volumes after the folder rename. New installations copied from `.env.example` use `bydoc-platform` and `bydoc` defaults. Do not overwrite an existing `.env` with the example file.
-
-1. Create a local configuration file, set a development database password, and start PostgreSQL and Redis:
+1. Create local configuration, replace the example development secrets in `.env`, and start PostgreSQL and Redis:
 
    ```powershell
    if (!(Test-Path .env)) { Copy-Item .env.example .env }
@@ -52,13 +50,23 @@ Existing local installations retain their original PostgreSQL database and user.
    npm.cmd run dev
    ```
 
-Open `http://localhost:3000`. Use `localhost` consistently in the browser so the development session cookie and CSRF flow work. The API is at `http://localhost:8000/api/v1/`; liveness and readiness endpoints are under `/health/`.
+Open `http://localhost:3000`. Use `localhost` for both frontend and API so session cookies and CSRF work. The API base is `http://localhost:8000/api/v1/`; health endpoints are `/health/live/` and `/health/ready/`.
 
-Email verification and password reset requests need a Celery worker and Beat to deliver their links. Development mail is written to `backend/local-email`. See [patient frontend setup](docs/patient-frontend.md) for the worker commands and [account recovery](docs/account-recovery.md) for delivery behavior.
+For email verification and password reset delivery, run a Celery worker and Beat in two more backend terminals. Development email is written to `backend/local-email`:
 
-Google sign-in is optional and stays in a setup state until a Google web client ID is configured in both the root `.env` (`GOOGLE_OAUTH_CLIENT_ID`) and `frontend/.env.local` (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`). See [email and Google sign-in](docs/email-google-sign-in.md) for setup and account linking. Do not put a Google client secret in the frontend.
+```powershell
+# From backend, terminal 1
+.\venv\Scripts\python.exe -m celery -A config worker --loglevel=INFO --pool=solo --concurrency=1 --without-mingle --without-gossip
 
-## Checks
+# From backend, terminal 2
+.\venv\Scripts\python.exe -m celery -A config beat --loglevel=INFO --schedule "$env:TEMP\bydoc-celerybeat-schedule"
+```
+
+See [account recovery](docs/account-recovery.md) for the delivery flow. Optional Google sign-in requires the same web client ID in root `.env` (`GOOGLE_OAUTH_CLIENT_ID`) and `frontend/.env.local` (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`); see [authentication setup](docs/email-google-sign-in.md). Do not put a Google client secret in the frontend.
+
+Guided help and support requests work without an AI model. To enable local topic classification, follow the [assistant setup](docs/ai-assistant.md). The model never writes a patient-facing answer or performs a booking action.
+
+## Verify a local change
 
 With PostgreSQL and Redis running, from `backend`:
 
@@ -75,19 +83,22 @@ npm.cmd run typecheck
 npm.cmd run build
 ```
 
-Backend CI also compiles translation catalogs and validates the OpenAPI schema. The current translated backend messages do not represent a complete Bengali or Hindi interface.
-Frontend CI typechecks and builds the standalone server with an example HTTPS API origin.
+GitHub Actions also checks backend translations and the OpenAPI schema, and builds the standalone frontend server. See the [backend](.github/workflows/backend-ci.yml) and [frontend](.github/workflows/frontend-ci.yml) workflows.
 
-## Project boundaries
+## Deployment readiness
 
-PostgreSQL is the source of truth for appointment state. A selected slot or sent notification must never be presented as a confirmed booking without an authoritative confirmed appointment. Clinic and patient data require scoped authorization.
+The [AWS deployment design and release runbook](docs/aws-deployment.md) covers proposed infrastructure, secrets, containers, and release checks. Production settings and container images exist, but this repository does not provision AWS infrastructure. **Do not treat a passing build as approval to launch.** Remaining work includes:
 
-The initial product is not a diagnosis, treatment, emergency, prescription, medical-record, or consultation-payment service. Keep secrets, patient data, verification documents, local mail, virtual environments, and database backups out of Git.
+- Provisioning and testing the production environment, HTTPS, email delivery, monitoring, backup restoration, and incident procedures.
+- Completing clinic receptionist workflows, patient booking management, a full support inbox, and notification screens.
+- Reviewing accessibility and Bengali/Hindi coverage, plus clinical safety testing of the assistant before public healthcare use.
+- Resolving the phone OTP requirement in the planning drafts against the current email/password and optional Google sign-in implementation.
 
-## Repository guide
+PostgreSQL is authoritative for bookings: a selected slot, hold, or sent notification is not a confirmed appointment. BYdoc does not currently provide diagnosis, treatment, emergency care, prescriptions, medical records, or consultation payments. Keep secrets, patient data, verification documents, local mail, virtual environments, and backups out of Git.
 
-- `backend/` — Django API, domain models and services, Celery workers, and tests.
-- `frontend/` — Next.js patient account interface.
-- `docs/` — Current implementation and setup notes.
-- `compose.yml` — Local PostgreSQL and Redis services.
-- `.github/workflows/` — Backend CI.
+## Repository and documentation
+
+- [`backend/`](backend/) — Django API, domain services, Celery tasks, and tests.
+- [`frontend/`](frontend/) — Next.js patient experience and role dashboards.
+- [`compose.yml`](compose.yml) — Local PostgreSQL, Redis, and optional Ollama service.
+- [Patient frontend](docs/patient-frontend.md), [role dashboards](docs/role-dashboards.md), [AI and support guide](docs/ai-assistant.md), and [AWS deployment](docs/aws-deployment.md) — implementation and operating notes.
