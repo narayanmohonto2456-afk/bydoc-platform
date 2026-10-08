@@ -292,8 +292,9 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="BYdoc <noreply@localhost
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.filebased.EmailBackend")
 EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", default=str(BASE_DIR / "local-email"))
 
-# The patient assistant calls a locally hosted Ollama service. It never receives
-# account, appointment, or profile records automatically.
+# Product guidance remains available when the optional local classifier is off.
+# The model never receives account, appointment, or profile records automatically.
+ASSISTANT_ENABLED = env.bool("ASSISTANT_ENABLED", default=True)
 AI_CHAT_ENABLED = env.bool("AI_CHAT_ENABLED", default=False)
 OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://127.0.0.1:11434").rstrip("/")
 OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3.2:3b")

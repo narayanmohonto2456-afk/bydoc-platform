@@ -18,7 +18,9 @@ class ChatRequestSerializer(serializers.Serializer):
 
 class ChatResponseSerializer(serializers.Serializer):
     reply = serializers.CharField()
+    topic = serializers.CharField()
 
 
 class ChatStatusSerializer(serializers.Serializer):
     enabled = serializers.BooleanField()
+    ai_enabled = serializers.BooleanField()

@@ -9,7 +9,7 @@ from .serializers import (
     ChatResponseSerializer,
     ChatStatusSerializer,
 )
-from .service import ChatUnavailable, answer, limit_chat
+from .service import ChatUnavailable, classify, limit_chat, ANSWERS
 
 
 class ChatStatusView(APIView):
@@ -18,7 +18,10 @@ class ChatStatusView(APIView):
 
     @extend_schema(responses={200: ChatStatusSerializer})
     def get(self, request):
-        return Response({"enabled": settings.AI_CHAT_ENABLED})
+        return Response({
+            "enabled": settings.ASSISTANT_ENABLED,
+            "ai_enabled": settings.ASSISTANT_ENABLED and settings.AI_CHAT_ENABLED,
+        })
 
 
 class ChatView(APIView):
@@ -26,13 +29,14 @@ class ChatView(APIView):
 
     @extend_schema(request=ChatRequestSerializer, responses={200: ChatResponseSerializer})
     def post(self, request):
-        if not settings.AI_CHAT_ENABLED:
+        if not settings.ASSISTANT_ENABLED:
             raise ChatUnavailable()
         serializer = ChatRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         limit_chat(request.user.pk)
-        reply = answer(
+        topic = classify(
             serializer.validated_data["message"],
             serializer.validated_data.get("history", []),
+            use_model=settings.AI_CHAT_ENABLED,
         )
-        return Response({"reply": reply}, status=status.HTTP_200_OK)
+        return Response({"reply": ANSWERS[topic], "topic": topic}, status=status.HTTP_200_OK)

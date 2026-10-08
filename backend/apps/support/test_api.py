@@ -119,6 +119,22 @@ def test_authenticated_user_can_create_support_case():
     assert support_case.assigned_to is None
 
 
+def test_support_submissions_are_limited_per_account():
+    requester = create_user("submission-limit-user")
+    client = authenticated_client(requester)
+    url = reverse("support:case-list-create")
+    payload = {
+        "category": SupportCase.Category.OTHER,
+        "subject": "App issue",
+        "description": "An operational issue occurred.",
+    }
+
+    for _ in range(5):
+        assert client.post(url, payload, format="json").status_code == 201
+    assert client.post(url, payload, format="json").status_code == 429
+    assert SupportCase.objects.filter(requester=requester).count() == 5
+
+
 def test_client_cannot_control_protected_case_fields():
     requester = create_user("protected-fields-user")
     other_user = create_user("protected-other-user")

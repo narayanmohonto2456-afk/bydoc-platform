@@ -4,7 +4,8 @@ import pytest
 import requests
 from django.test import Client, override_settings
 
-from apps.chatbot.service import ANSWERS, ChatUnavailable, answer
+from apps.chatbot.service import ANSWERS, answer
+from apps.support.models import SupportCase
 
 
 @pytest.fixture
@@ -15,11 +16,11 @@ def patient(django_user_model):
     )
 
 
-@override_settings(AI_CHAT_ENABLED=False)
-def test_status_reports_disabled_by_default(client):
+@override_settings(ASSISTANT_ENABLED=True, AI_CHAT_ENABLED=False)
+def test_status_reports_guided_help_without_model(client):
     response = client.get("/api/v1/assistant/status/")
     assert response.status_code == 200
-    assert response.json() == {"enabled": False}
+    assert response.json() == {"enabled": True, "ai_enabled": False}
 
 
 @override_settings(AI_CHAT_ENABLED=True)
@@ -44,6 +45,7 @@ def test_medical_question_gets_fixed_response_without_model_call(client, patient
         )
     assert response.status_code == 200
     assert "cannot give medical advice" in response.json()["reply"]
+    assert response.json()["topic"] == "HEALTH"
     model_call.assert_not_called()
 
 
@@ -57,7 +59,7 @@ def test_medical_question_gets_fixed_response_without_model_call(client, patient
         ("Where can I edit my details?", "/account"),
         ("How do I confirm my email address?", "verification message"),
         ("I need help with a cough", "cannot give medical advice"),
-        ("Where can I find support?", "dedicated support page"),
+        ("Where can I find support?", "support request"),
     ],
 )
 def test_common_app_guidance_is_exact_without_model_call(question, expected):
@@ -88,8 +90,8 @@ def test_chat_rejects_system_history_and_overlong_message(client, patient):
 
 
 @pytest.mark.django_db
-@override_settings(AI_CHAT_ENABLED=False)
-def test_chat_disabled_fails_closed(client, patient):
+@override_settings(ASSISTANT_ENABLED=False)
+def test_guide_disabled_fails_closed(client, patient):
     client.force_login(patient)
     response = client.post(
         "/api/v1/assistant/chat/",
@@ -97,6 +99,46 @@ def test_chat_disabled_fails_closed(client, patient):
         content_type="application/json",
     )
     assert response.status_code == 503
+
+
+@pytest.mark.django_db
+@override_settings(ASSISTANT_ENABLED=True, AI_CHAT_ENABLED=False)
+def test_guided_help_works_without_model_and_does_not_create_case(client, patient):
+    client.force_login(patient)
+    with patch("apps.chatbot.views.limit_chat"), patch("apps.chatbot.service.requests.Session") as model_call:
+        response = client.post(
+            "/api/v1/assistant/chat/",
+            data={"message": "Where can I find support?"},
+            content_type="application/json",
+        )
+        unknown = client.post(
+            "/api/v1/assistant/chat/",
+            data={"message": "Could you guide me?"},
+            content_type="application/json",
+        )
+    assert response.status_code == 200
+    assert response.json()["topic"] == "SUPPORT"
+    assert unknown.status_code == 200
+    assert unknown.json()["topic"] == "OTHER"
+    assert SupportCase.objects.count() == 0
+    model_call.assert_not_called()
+
+
+@pytest.mark.django_db
+def test_help_widget_case_list_is_scoped_for_staff(client, patient, django_user_model):
+    staff = django_user_model.objects.create_user(
+        username="chat-support-staff", password="strong-test-password-123", is_staff=True,
+    )
+    own = SupportCase.objects.create(
+        requester=staff, category="other", subject="My issue", description="An app issue",
+    )
+    SupportCase.objects.create(
+        requester=patient, category="other", subject="Patient issue", description="Another app issue",
+    )
+    client.force_login(staff)
+    response = client.get("/api/v1/support/cases/?mine=1")
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [str(own.id)]
 
 
 @pytest.mark.django_db
@@ -141,8 +183,7 @@ def test_model_prose_cannot_reach_patient():
 
 
 @override_settings(OLLAMA_BASE_URL="http://127.0.0.1:11434", OLLAMA_MODEL="llama3.2:3b")
-def test_model_connection_failure_returns_generic_unavailable_error():
+def test_model_connection_failure_falls_back_to_guided_help():
     with patch("apps.chatbot.service.requests.Session") as session_type:
         session_type.return_value.__enter__.return_value.post.side_effect = requests.ConnectionError()
-        with pytest.raises(ChatUnavailable):
-            answer("Could you guide me?", [])
+        assert answer("Could you guide me?", []) == ANSWERS["OTHER"]

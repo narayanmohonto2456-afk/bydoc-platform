@@ -6,11 +6,11 @@ BYdoc is a healthcare discovery and outpatient appointment project for patients,
 
 The Django backend has organization and clinic models, doctor profiles and verification data, appointment slots and race-safe booking, a notification outbox and inbox, support cases, preferences, patient accounts, verified email recovery, and a patient profile API. The Next.js frontend covers account registration, email or username sign-in, optional Google sign-in, email verification, password reset, profile editing, and patient discovery and booking.
 
-The patient frontend now provides verified doctor and clinic discovery plus an online booking flow with live slots, a short hold, fee review, and server-confirmed appointment status. It does not yet provide patient notification or support screens, family-member booking, or a cancellation UI. Clinic staff workflows, full frontend translations, production email delivery, deployment, monitoring, and backup restoration still need work. This repository is **not production ready**.
+The patient frontend now provides verified doctor and clinic discovery plus an online booking flow with live slots, a short hold, fee review, and server-confirmed appointment status. The help widget provides basic support requests and status; a full support inbox, patient notifications, family-member booking, and cancellation UI still need work. Clinic staff workflows, full frontend translations, production email delivery, deployment, monitoring, and backup restoration still need work. This repository is **not production ready**.
 
 An [AWS deployment design and release runbook](docs/aws-deployment.md) describes the proposed production environment, required secrets, container builds, release checks, and remaining launch gates. The backend has fail-closed production settings and a deployable container image; the frontend has a standalone container image. No AWS infrastructure has been provisioned from this repository.
 
-The patient interface includes a [local AI guide](docs/ai-assistant.md) for account and app questions. It uses Ollama when enabled and keeps the model private. It cannot give medical advice or change bookings.
+The patient interface includes a [guided help and support chat](docs/ai-assistant.md) for booking and account navigation, support requests, and case tracking. An optional private Ollama model classifies free-text topics; reviewed answers remain available when it is off. The guide cannot give medical advice or change bookings.
 
 Signed-in users have [separate patient, doctor, clinic, and platform-admin dashboards](docs/role-dashboards.md). The current dashboards show role-scoped summaries; booking and clinic operations remain future work.
 
