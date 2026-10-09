@@ -85,6 +85,8 @@ npm.cmd run build
 
 GitHub Actions also checks backend translations and the OpenAPI schema, and builds the standalone frontend server. See the [backend](.github/workflows/backend-ci.yml) and [frontend](.github/workflows/frontend-ci.yml) workflows.
 
+The latest local [verification record](docs/verification-2026-10-09.md) lists the full test, container, and HTTP smoke results, plus checks that still need staging provider access.
+
 ## Deployment readiness
 
 The [AWS deployment design and release runbook](docs/aws-deployment.md) covers proposed infrastructure, secrets, containers, and release checks. Production settings and container images exist, but this repository does not provision AWS infrastructure. **Do not treat a passing build as approval to launch.** Remaining work includes:
