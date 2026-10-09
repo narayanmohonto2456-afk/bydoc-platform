@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.urls import include, path
 
 urlpatterns = [
+    path("api/v1/clinics/", include("apps.clinics.urls")),
+    path("api/v1/doctors/", include("apps.doctors.urls")),
     path("api/v1/auth/", include("apps.accounts.urls")),
     path("api/v1/assistant/", include("apps.chatbot.urls")),
     path("api/v1/dashboard/", include("apps.dashboard.urls")),
