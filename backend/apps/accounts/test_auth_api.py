@@ -55,7 +55,7 @@ def test_registration_login_account_and_logout():
     assert not user.is_staff and not user.is_superuser
     assert not user.groups.exists() and not user.user_permissions.exists()
     assert UserPreference.objects.filter(user=user).count() == 1
-    assert client.get(reverse("accounts:me")).status_code == 403
+    assert client.get(reverse("accounts:me")).status_code == 401
 
     session = client.session
     session["before_login"] = "anonymous-session"
@@ -85,8 +85,8 @@ def test_registration_login_account_and_logout():
     assert post(client, "logout", {}, token=old_token).status_code == 403
     logged_out = post(client, "logout", {}, token=signed_in.data["csrf_token"])
     assert logged_out.status_code == 204
-    assert client.get(reverse("accounts:me")).status_code == 403
-    assert client.get(reverse("appointments:my-appointments")).status_code == 403
+    assert client.get(reverse("accounts:me")).status_code == 401
+    assert client.get(reverse("appointments:my-appointments")).status_code == 401
 
 
 @pytest.mark.parametrize("endpoint", ["register", "login"])
@@ -173,8 +173,8 @@ def test_basic_auth_cannot_bypass_login_rate_limits():
     User.objects.create_user(username="basic-test", password=PASSWORD)
     client = browser()
     credentials = base64.b64encode(f"basic-test:{PASSWORD}".encode()).decode()
-    assert client.get(reverse("accounts:me"), HTTP_AUTHORIZATION="Basic " + credentials).status_code == 403
-    assert client.get(reverse("appointments:my-appointments"), HTTP_AUTHORIZATION="Basic " + credentials).status_code == 403
+    assert client.get(reverse("accounts:me"), HTTP_AUTHORIZATION="Basic " + credentials).status_code == 401
+    assert client.get(reverse("appointments:my-appointments"), HTTP_AUTHORIZATION="Basic " + credentials).status_code == 401
 
 
 def test_logout_requires_csrf_and_rejects_get():

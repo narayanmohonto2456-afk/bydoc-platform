@@ -8,12 +8,14 @@ from .views import (
     PublicSlotListView,
     PublicProviderListView,
 )
+from .nearby import NearbyClinicView
 
 
 app_name = "appointments"
 
 
 urlpatterns = [
+    path("nearby-clinics/", NearbyClinicView.as_view(), name="nearby-clinics"),
     path("providers/", PublicProviderListView.as_view(), name="provider-list"),
     path(
         "slots/",

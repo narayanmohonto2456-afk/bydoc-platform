@@ -174,7 +174,8 @@ AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        "apps.accounts.jwt_auth.JWTAuthentication",
+        "apps.accounts.jwt_auth.LegacySessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -186,6 +187,10 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
     ],
 }
+
+API_LEGACY_SESSION_AUTH = False
+AUTH_ACCESS_COOKIE_NAME = "bydoc-access"
+AUTH_REFRESH_COOKIE_NAME = "bydoc-refresh"
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "BYdoc API",
@@ -234,6 +239,12 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = "UTC"
 
 CELERY_BEAT_SCHEDULE = {
+    "dispatch-otp-every-ten-seconds": {
+        "task": "accounts.dispatch_otp", "schedule": 10.0,
+    },
+    "recover-stale-otp-every-minute": {
+        "task": "accounts.recover_stale_otp", "schedule": 60.0,
+    },
     "dispatch-recovery-email-every-minute": {
         "task": "accounts.dispatch_recovery_email", "schedule": 60.0,
     },
@@ -259,7 +270,7 @@ CELERY_BEAT_SCHEDULE = {
 
 APPOINTMENT_HOLD_MINUTES = 5
 
-# Browser sessions for the patient-facing API.
+# Django sessions remain available for the admin site; API clients use JWT.
 CORS_ALLOW_CREDENTIALS = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -284,6 +295,10 @@ AUTH_RATE_LIMITS = {
     "reset_ip": (10, 3600),
     "reset_address": (5, 3600),
     "confirm_ip": (30, 3600),
+    "otp_request_ip": (10, 3600),
+    "otp_destination": (3, 900),
+    "otp_confirm_ip": (20, 900),
+    "otp_confirm_destination": (10, 900),
 }
 
 ACCOUNT_LINK_BASE_URL = env("ACCOUNT_LINK_BASE_URL", default="http://localhost:3000")
@@ -298,3 +313,10 @@ ASSISTANT_ENABLED = env.bool("ASSISTANT_ENABLED", default=True)
 AI_CHAT_ENABLED = env.bool("AI_CHAT_ENABLED", default=False)
 OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://127.0.0.1:11434").rstrip("/")
 OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3.2:3b")
+
+OTP_SMS_ENABLED = env.bool("OTP_SMS_ENABLED", default=False)
+AWS_SMS_REGION = env("AWS_SMS_REGION", default="")
+AWS_SMS_ORIGINATION_ID = env("AWS_SMS_ORIGINATION_ID", default="")
+AWS_SMS_ENTITY_ID = env("AWS_SMS_ENTITY_ID", default="")
+AWS_SMS_LOGIN_TEMPLATE_ID = env("AWS_SMS_LOGIN_TEMPLATE_ID", default="")
+AWS_SMS_VERIFY_TEMPLATE_ID = env("AWS_SMS_VERIFY_TEMPLATE_ID", default="")

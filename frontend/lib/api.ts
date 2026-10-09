@@ -58,13 +58,22 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   }
   let response: Response;
   try {
-    response = await fetch(`${apiBase}${path}`, {
+    const request: RequestInit = {
       ...init,
       method,
       headers,
       credentials: "include",
       cache: "no-store",
-    });
+    };
+    response = await fetch(`${apiBase}${path}`, request);
+    if (response.status === 401 && !path.startsWith("/auth/token/")
+      && !["/auth/login/", "/auth/google/"].includes(path)) {
+      const refreshHeaders = new Headers({ "X-CSRFToken": await csrfToken() });
+      const refreshed = await fetch(`${apiBase}/auth/token/refresh/`, {
+        method: "POST", headers: refreshHeaders, credentials: "include", cache: "no-store",
+      });
+      if (refreshed.ok) response = await fetch(`${apiBase}${path}`, request);
+    }
   } catch {
     throw new ApiError(0, "Cannot reach BYdoc right now. Please try again.");
   }

@@ -14,6 +14,7 @@ Browser
        -> private RDS PostgreSQL (Multi-AZ, encrypted, TLS)
        -> private ElastiCache Redis OSS (encrypted in transit and at rest, AUTH)
        -> Amazon SES SMTP (verified sender domain)
+       -> AWS End User Messaging SMS (registered sender and templates)
 ```
 
 Use at least two Availability Zones. Put only the load balancer in public subnets. ECS tasks, RDS, and Redis stay in private subnets; security groups allow only the required paths (ALB to web/API, application tasks to RDS/Redis, worker to SES). Give ECS task execution and application roles separate, least-privilege policies. Send container logs to CloudWatch with restricted access and retention. Use ECR repositories with image scanning, immutable tags, and lifecycle rules. Store runtime secrets in Secrets Manager, with KMS encryption and controlled rotation. ECS injects secrets into task environment at startup, so a secret rotation requires a new deployment of affected tasks.
@@ -22,13 +23,15 @@ The API image serves Django static assets through WhiteNoise. The web image is a
 
 ## Build and configuration
 
-Build images from the repository root and push immutable image tags to ECR. The public API URL and optional Google web client ID are embedded in the web build, so rebuild the web image when either changes.
+Build images from the repository root and push immutable image tags to ECR. The public API URL, optional Google web client ID, and map tile settings are embedded in the web build, so rebuild the web image when any changes.
 
 ```sh
 docker build -f backend/Dockerfile -t bydoc-api:RELEASE_SHA backend
 docker build -f frontend/Dockerfile \
   --build-arg NEXT_PUBLIC_API_BASE_URL=https://api.example.com/api/v1 \
   --build-arg NEXT_PUBLIC_GOOGLE_CLIENT_ID=YOUR_PUBLIC_CLIENT_ID \
+  --build-arg 'NEXT_PUBLIC_MAP_TILE_URL=https://YOUR_TILE_PROVIDER/{z}/{x}/{y}.png' \
+  --build-arg 'NEXT_PUBLIC_MAP_ATTRIBUTION=Your provider attribution' \
   -t bydoc-web:RELEASE_SHA frontend
 ```
 
@@ -36,7 +39,7 @@ Set `DJANGO_SETTINGS_MODULE=config.settings.production` on the API, worker, Beat
 
 | Setting | Source and value |
 | --- | --- |
-| `DJANGO_SECRET_KEY` | Secrets Manager; unique random value of at least 50 characters. Plan key rotation separately because changing it invalidates existing sessions and signed values. |
+| `DJANGO_SECRET_KEY` | Secrets Manager; unique random value of at least 50 characters. Plan key rotation separately because changing it invalidates access JWTs and OTP challenges. |
 | `APP_ALLOWED_HOSTS` | `api.example.com`; exact API hostnames, comma separated. |
 | `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` | `https://app.example.com`; comma separated HTTPS origins. |
 | `ACCOUNT_LINK_BASE_URL` | `https://app.example.com`; verification and recovery links. |
@@ -50,6 +53,8 @@ Set `DJANGO_SETTINGS_MODULE=config.settings.production` on the API, worker, Beat
 | `DEFAULT_FROM_EMAIL` | Verified sender, e.g. `BYdoc <no-reply@example.com>`. |
 | `TRUSTED_PROXY_SSL_HEADER` | `True` only when the ALB is the sole inbound path to the API and its `X-Forwarded-Proto` behavior has been verified against a spoofed client header. |
 | `GOOGLE_OAUTH_CLIENT_ID` | Optional public Google web client ID, matching the web build. Configure authorized origins in Google Cloud. |
+| `OTP_SMS_ENABLED` | Keep `false` until the AWS sender, registration, approved templates, and end-to-end delivery have been verified. |
+| `AWS_SMS_REGION`, `AWS_SMS_ORIGINATION_ID`, `AWS_SMS_ENTITY_ID`, `AWS_SMS_LOGIN_TEMPLATE_ID`, `AWS_SMS_VERIFY_TEMPLATE_ID` | Required when SMS is enabled. Give the application task role only the SMS send permissions and registered origination identity it needs. For India, use the approved DLT entity and template IDs matching the actual message text. |
 
 Do not set `APP_DEBUG=True` in production. The production module forces `DEBUG=False`, checks required values at startup, requires verified TLS for PostgreSQL and authenticated TLS for Redis, and rejects development email delivery. It does not load the repository `.env` file. Keep RDS and Redis endpoints on private DNS names whose certificates match the TLS hostnames. The included RDS CA bundle is a public trust anchor; refresh it on AWS CA rotation and rebuild the image. Django's deployment check intentionally warns that HSTS does not include all subdomains and is not preloaded; enable those policies only after verifying every subdomain is HTTPS-only and you control the full domain.
 
@@ -57,10 +62,10 @@ The AWS ALB checks `GET /health/ready/` on the API target group and `GET /` on t
 
 ## Release sequence
 
-1. Provision Route 53, ACM, WAF, VPC/subnets/security groups, ECR, Secrets Manager, RDS, Redis, SES, CloudWatch, ECS, and the ALB using reviewed infrastructure as code. Turn on RDS automated backups, point-in-time recovery, deletion protection, and Multi-AZ. Verify SES production sending and domain authentication (SPF, DKIM, DMARC).
+1. Provision Route 53, ACM, WAF, VPC/subnets/security groups, ECR, Secrets Manager, RDS, Redis, SES, CloudWatch, ECS, and the ALB using reviewed infrastructure as code. Turn on RDS automated backups, point-in-time recovery, deletion protection, and Multi-AZ. Verify SES production sending and domain authentication (SPF, DKIM, DMARC). Register the SMS sender and both templates before enabling SMS.
 2. Build and scan the images in CI. Push images to ECR with the commit SHA; deploy a staging environment from those exact image digests. Run backend tests, frontend typecheck/build, `python manage.py check --deploy` (review the two deliberate HSTS warnings), and a test account flow in staging.
 3. Take a verified pre-release RDS recovery point. Run the one-off migration task once, wait for success, then update the worker, Beat, API, and web services to the new image digests. Confirm ALB target health and one Beat instance.
-4. Smoke-test HTTPS, registration, email verification, sign-in, password reset, Google sign-in if configured, CSRF, booking concurrency, notification delivery, and tenant permissions with synthetic accounts only. Confirm failed login throttling and no secrets or patient data in logs.
+4. Smoke-test HTTPS, registration, email and phone verification, password and OTP sign-in, JWT refresh rotation and logout, password reset, Google sign-in if configured, CSRF, the nearby clinic map, booking concurrency, notification delivery, and tenant permissions with synthetic accounts only. Confirm failed login throttling and no secrets or patient data in logs.
 5. Monitor 5xx rate, p95 latency, unhealthy targets, task restarts, RDS storage/connections, Redis memory, Celery queue age and failures, SES bounces, and backup status. Page the on-call owner for critical failures. Rehearse restoring RDS into an isolated environment and record recovery time and recovery point. Test rollback using previous image digests; reverse incompatible migrations through a forward fix or a documented database restore.
 
 ## Launch gates still open
@@ -69,7 +74,7 @@ The guided help and support-request chat is enabled by default through `ASSISTAN
 
 - Production infrastructure as code, AWS account/Region/domains, budgets, IAM review, key rotation, and alert routing have not been configured in this repository.
 - Staff and administrator MFA, a permissions audit across patient and clinic endpoints, and an independent security review are required before handling real patient information. Google sign-in remains optional until a client ID is configured.
-- Patient booking management and clinic operations are still incomplete. The historical product plan's phone OTP requirement conflicts with the current email/Google authentication choice and needs a product decision.
+- Patient booking management and clinic operations are still incomplete. SMS OTP code exists but needs an AWS sender and approved templates, live delivery validation, and registration before launch. Google sign-in needs a Google web client ID. Use a managed map tile service with its required attribution for production traffic.
 - File uploads and verification documents must use a private, encrypted object store with access controls and malware scanning before they are enabled. The current container filesystem is ephemeral.
 - Complete a staging restore drill, load/concurrency test, accessibility review, and incident response rehearsal before public launch.
 

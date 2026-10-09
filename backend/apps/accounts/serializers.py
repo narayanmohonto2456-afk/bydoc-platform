@@ -5,7 +5,7 @@ from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from django.utils import timezone
 
-from .models import AccountRecoveryRequest, PatientProfile, VerifiedEmail, phone_validator
+from .models import AccountRecoveryRequest, PatientProfile, VerifiedEmail, VerifiedPhone, phone_validator
 from .recovery import request_link
 
 User = get_user_model()
@@ -93,6 +93,42 @@ class LoginSerializer(StrictFieldsMixin, serializers.Serializer):
     def validate_username(self, value):
         value = User.normalize_username(value)
         return value.casefold() if "@" in value else value
+
+
+class OtpLoginSerializer(StrictFieldsMixin, serializers.Serializer):
+    channel = serializers.ChoiceField(choices=("email", "sms"))
+    identifier = serializers.CharField(max_length=254)
+
+    def validate(self, attrs):
+        identifier = attrs["identifier"].strip()
+        if attrs["channel"] == "email":
+            field = serializers.EmailField(max_length=254)
+            identifier = field.run_validation(identifier).casefold()
+        else:
+            try:
+                phone_validator(identifier)
+            except DjangoValidationError as error:
+                raise serializers.ValidationError({"identifier": error.messages}) from error
+        attrs["identifier"] = identifier
+        return attrs
+
+
+class OtpConfirmSerializer(OtpLoginSerializer):
+    code = serializers.RegexField(regex=r"^[0-9]{6}$", trim_whitespace=False)
+
+
+class PhoneCodeSerializer(StrictFieldsMixin, serializers.Serializer):
+    code = serializers.RegexField(regex=r"^[0-9]{6}$", trim_whitespace=False)
+
+
+class PhoneStatusSerializer(serializers.Serializer):
+    verified = serializers.BooleanField(read_only=True)
+    sms_available = serializers.BooleanField(read_only=True)
+
+
+class OtpAvailabilitySerializer(serializers.Serializer):
+    email = serializers.BooleanField(read_only=True)
+    sms = serializers.BooleanField(read_only=True)
 
 
 class GoogleCredentialSerializer(StrictFieldsMixin, serializers.Serializer):
@@ -255,6 +291,7 @@ class PatientProfileSerializer(
 
         with transaction.atomic():
             user = instance.user
+            previous_phone = user.phone_number
 
             for field_name in user_fields:
                 if field_name in validated_data:
@@ -272,6 +309,8 @@ class PatientProfileSerializer(
                     "updated_at",
                 ]
             )
+            if user.phone_number != previous_phone:
+                VerifiedPhone.objects.filter(user=user).delete()
 
             for field_name, value in validated_data.items():
                 setattr(instance, field_name, value)

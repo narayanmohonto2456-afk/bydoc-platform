@@ -9,6 +9,7 @@ import { PasswordField } from "@/components/PasswordField";
 import { GoogleButton } from "@/components/GoogleButton";
 
 type GoogleStatus = { connected: boolean; verified_email: string | null; has_password: boolean };
+type PhoneStatus = { verified: boolean; sms_available: boolean };
 
 export default function AccountPage() {
   const router = useRouter();
@@ -26,6 +27,11 @@ export default function AccountPage() {
   const [logoutError, setLogoutError] = useState("");
   const [googleStatus, setGoogleStatus] = useState<GoogleStatus | null>(null);
   const [googleStatusError, setGoogleStatusError] = useState("");
+  const [phoneStatus, setPhoneStatus] = useState<PhoneStatus | null>(null);
+  const [phoneCode, setPhoneCode] = useState("");
+  const [phoneCodeRequested, setPhoneCodeRequested] = useState(false);
+  const [phoneBusy, setPhoneBusy] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -35,6 +41,8 @@ export default function AccountPage() {
     apiRequest<GoogleStatus>("/auth/google/status/")
       .then(setGoogleStatus)
       .catch(cause => setGoogleStatusError(cause instanceof Error ? cause.message : "Could not load sign-in settings."));
+    apiRequest<PhoneStatus>("/auth/phone/status/").then(setPhoneStatus)
+      .catch(cause => setPhoneError(cause instanceof Error ? cause.message : "Could not load phone status."));
   }, [user?.id]);
 
   const profileDirty = profile !== null && savedProfile !== null && JSON.stringify(profile) !== JSON.stringify(savedProfile);
@@ -58,6 +66,8 @@ export default function AccountPage() {
       setProfile(saved);
       setSavedProfile(saved);
       setProfileSaved(true);
+      setPhoneCodeRequested(false);
+      setPhoneStatus(current => current ? { ...current, verified: current.verified && saved.phone_number === savedProfile?.phone_number } : current);
       await refresh();
     } catch (cause) {
       setProfileError(cause instanceof Error ? cause.message : "Could not save your profile.");
@@ -92,6 +102,35 @@ export default function AccountPage() {
     }
   }
 
+  async function requestPhoneCode() {
+    setPhoneBusy(true);
+    setPhoneError("");
+    try {
+      await postJson("/auth/phone/verify/request/", {});
+      setPhoneCodeRequested(true);
+    } catch (cause) {
+      setPhoneError(cause instanceof Error ? cause.message : "Could not send phone code.");
+    } finally {
+      setPhoneBusy(false);
+    }
+  }
+
+  async function confirmPhoneCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPhoneBusy(true);
+    setPhoneError("");
+    try {
+      await postJson("/auth/phone/verify/confirm/", { code: phoneCode });
+      setPhoneStatus(current => current ? { ...current, verified: true } : current);
+      setPhoneCodeRequested(false);
+      setPhoneCode("");
+    } catch (cause) {
+      setPhoneError(cause instanceof Error ? cause.message : "Could not verify phone.");
+    } finally {
+      setPhoneBusy(false);
+    }
+  }
+
   if (loading) return <div className="wide-shell"><p role="status">Loading your account…</p></div>;
   if (!user) return <div className="form-shell"><div className="panel"><h1>Sign in required</h1><p>Please <Link href="/login">sign in</Link> to see your account.</p></div></div>;
 
@@ -106,7 +145,7 @@ export default function AccountPage() {
         {!profile ? <p role="status">Loading profile…</p> : <form onSubmit={saveProfile}>
           <div className="field"><label htmlFor="first-name">First name</label><input id="first-name" autoComplete="given-name" maxLength={150} value={profile.first_name} onChange={event => change("first_name", event.target.value)} /></div>
           <div className="field"><label htmlFor="last-name">Last name</label><input id="last-name" autoComplete="family-name" maxLength={150} value={profile.last_name} onChange={event => change("last_name", event.target.value)} /></div>
-          <div className="field"><label htmlFor="phone">Phone number</label><input id="phone" type="tel" autoComplete="tel" placeholder="+919876543210" value={profile.phone_number || ""} onChange={event => change("phone_number", event.target.value)} /><span className="field-hint">Use international format, beginning with + and the country code. This number is not yet verified.</span></div>
+          <div className="field"><label htmlFor="phone">Phone number</label><input id="phone" type="tel" autoComplete="tel" placeholder="+919876543210" value={profile.phone_number || ""} onChange={event => change("phone_number", event.target.value)} /><span className="field-hint">Use international format, beginning with + and the country code. Save this number, then verify it below for SMS sign-in.</span></div>
           <div className="field"><label htmlFor="birth-date">Date of birth</label><input id="birth-date" type="date" max={new Date().toISOString().slice(0, 10)} value={profile.date_of_birth || ""} onChange={event => change("date_of_birth", event.target.value || null)} /></div>
           <div className="field"><label htmlFor="gender">Gender (optional)</label><select id="gender" value={profile.gender} onChange={event => change("gender", event.target.value)}><option value="">Prefer not to provide</option><option value="woman">Woman</option><option value="man">Man</option><option value="non_binary">Non-binary</option><option value="prefer_not_to_say">Prefer not to say</option></select></div>
           <div className="divider" /><h3>Emergency contact (optional)</h3><p>Provide both the name and phone number, or leave both empty.</p>
@@ -125,6 +164,18 @@ export default function AccountPage() {
           <PasswordField id="current-password" label="Current password" autoComplete="current-password" value={currentPassword} onChange={setCurrentPassword} />
           <button className="button" disabled={verifyBusy}>{verifyBusy ? "Submitting…" : "Send verification link"}</button>
         </form>}
+      </section>
+      <section className="panel" aria-labelledby="phone-verify-heading">
+        <h2 id="phone-verify-heading">Phone verification</h2>
+        <p>Verify the phone number saved in your profile before using SMS sign-in.</p>
+        {phoneError && <div className="message message-error" role="alert">{phoneError}</div>}
+        {!phoneStatus && !phoneError && <p role="status">Loading phone status…</p>}
+        {phoneStatus?.verified ? <p className="message message-success" role="status">Your phone number is verified.</p> : phoneStatus && !phoneStatus.sms_available ? <p>SMS delivery is not configured yet. Email code sign-in remains available for verified email addresses.</p> : phoneStatus && !savedProfile?.phone_number ? <p>Add and save a phone number above first.</p> : phoneStatus && <>
+          {!phoneCodeRequested ? <button className="button" type="button" disabled={phoneBusy || profileDirty} onClick={requestPhoneCode}>{phoneBusy ? "Sending…" : "Send verification code"}</button> : <form onSubmit={confirmPhoneCode}>
+            <div className="field"><label htmlFor="phone-code">Six-digit SMS code</label><input id="phone-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={phoneCode} onChange={event => setPhoneCode(event.target.value.replace(/\D/g, ""))} /></div>
+            <div className="form-actions"><button className="button" disabled={phoneBusy}>{phoneBusy ? "Checking…" : "Verify phone"}</button><button className="button button-secondary" type="button" disabled={phoneBusy} onClick={requestPhoneCode}>Send new code</button></div>
+          </form>}
+        </>}
       </section>
       <section className="panel" aria-labelledby="google-heading">
         <h2 id="google-heading">Google sign-in</h2>

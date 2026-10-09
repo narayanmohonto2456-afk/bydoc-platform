@@ -1,29 +1,35 @@
 from django.contrib.auth import authenticate, login, logout
-from django.middleware.csrf import get_token
+from django.middleware.csrf import get_token, rotate_token
+from django.conf import settings
 from django.utils.cache import patch_vary_headers
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, permissions, status
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
+from rest_framework.exceptions import AuthenticationFailed
 
 from .rate_limits import client_address, consume_limit
 from .serializers import (
     AccountSerializer, AuthErrorSerializer, CsrfTokenSerializer,
     LoginResponseSerializer, LoginSerializer, RegistrationSerializer,
     GoogleCredentialSerializer, GoogleStatusSerializer,
+    OtpLoginSerializer, OtpConfirmSerializer, OtpAvailabilitySerializer, PhoneCodeSerializer, PhoneStatusSerializer,
     VerifyRequestSerializer, ResetRequestSerializer, TokenSerializer, ResetConfirmSerializer,
         PatientProfileSerializer,
 )
-from .models import AccountRecoveryRequest, GoogleIdentity, VerifiedEmail, PatientProfile
+from .models import AccountRecoveryRequest, GoogleIdentity, VerifiedEmail, VerifiedPhone, PatientProfile, OtpChallenge
 from .recovery import consume_link, request_link
 from .google_auth import google_sign_in, link_google_identity, verify_google_credential
+from .jwt_auth import JWTAuthentication, LegacySessionAuthentication, clear_auth_cookies, new_credentials, rotate_credentials, set_auth_cookies
+from .otp import SmsUnavailable, confirm_phone, consume_challenge, create_challenge, sms_ready
 from django.contrib.auth import get_user_model
 from django.db import transaction
+from django.utils import timezone
 
 
 class AccountAPIView(generics.GenericAPIView):
-    authentication_classes = (SessionAuthentication,)
+    authentication_classes = (JWTAuthentication, LegacySessionAuthentication)
     parser_classes = (JSONParser,)
 
     def initial(self, request, *args, **kwargs):
@@ -91,11 +97,17 @@ class LoginView(AccountAPIView):
                 {"detail": "Unable to sign in with these credentials."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        login(request._request, user)
-        return Response({
+        if settings.API_LEGACY_SESSION_AUTH:
+            login(request._request, user)
+        else:
+            rotate_token(request._request)
+        access, refresh, _ = new_credentials(user)
+        response = Response({
             "user": AccountSerializer(user).data,
             "csrf_token": get_token(request._request),
         })
+        set_auth_cookies(response, access, refresh)
+        return response
 
 
 class GoogleSignInView(AccountAPIView):
@@ -111,11 +123,155 @@ class GoogleSignInView(AccountAPIView):
         claims = verify_google_credential(serializer.validated_data["credential"])
         consume_limit("login_account", f"google:{claims.subject}")
         user = google_sign_in(claims)
-        login(request._request, user, backend="django.contrib.auth.backends.ModelBackend")
-        return Response({
+        if settings.API_LEGACY_SESSION_AUTH:
+            login(request._request, user, backend="django.contrib.auth.backends.ModelBackend")
+        else:
+            rotate_token(request._request)
+        access, refresh, _ = new_credentials(user)
+        response = Response({
             "user": AccountSerializer(user).data,
             "csrf_token": get_token(request._request),
         })
+        set_auth_cookies(response, access, refresh)
+        return response
+
+
+class TokenRefreshView(AccountAPIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = LoginResponseSerializer
+
+    @extend_schema(request=None, responses={200: LoginResponseSerializer})
+    def post(self, request):
+        raw = request.COOKIES.get(settings.AUTH_REFRESH_COOKIE_NAME)
+        if not raw:
+            return Response({"detail": "Refresh credential is missing."}, status=401)
+        try:
+            access, refresh, session = rotate_credentials(raw)
+        except AuthenticationFailed:
+            return Response({"detail": "Refresh credential is invalid."}, status=401)
+        response = Response({
+            "user": AccountSerializer(session.user).data,
+            "csrf_token": get_token(request._request),
+        })
+        set_auth_cookies(response, access, refresh)
+        return response
+
+
+def otp_user(channel, identifier):
+    if channel == OtpChallenge.Channel.EMAIL:
+        contact = VerifiedEmail.objects.select_related("user").filter(
+            address__iexact=identifier, user__is_active=True,
+        ).first()
+    else:
+        contact = VerifiedPhone.objects.select_related("user").filter(
+            number=identifier, user__phone_number=identifier, user__is_active=True,
+        ).first()
+    return contact.user if contact else None
+
+
+class OtpLoginRequestView(AccountAPIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = OtpLoginSerializer
+
+    @extend_schema(responses={202: AuthErrorSerializer})
+    def post(self, request):
+        consume_limit("otp_request_ip", client_address(request))
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        channel = serializer.validated_data["channel"]
+        identifier = serializer.validated_data["identifier"]
+        consume_limit("otp_destination", f"{channel}:{identifier}")
+        if channel == OtpChallenge.Channel.SMS and not sms_ready():
+            raise SmsUnavailable()
+        user = otp_user(channel, identifier)
+        if user:
+            create_challenge(user, OtpChallenge.Purpose.LOGIN, channel, identifier)
+        return Response({"detail": "If this contact is eligible, a code will be sent."}, status=202)
+
+
+class OtpAvailabilityView(AccountAPIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = OtpAvailabilitySerializer
+
+    @extend_schema(responses={200: OtpAvailabilitySerializer})
+    def get(self, request):
+        return Response({"email": True, "sms": bool(sms_ready())})
+
+
+class OtpLoginConfirmView(AccountAPIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = OtpConfirmSerializer
+
+    @extend_schema(responses={200: LoginResponseSerializer})
+    def post(self, request):
+        consume_limit("otp_confirm_ip", client_address(request))
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        channel = serializer.validated_data["channel"]
+        identifier = serializer.validated_data["identifier"]
+        consume_limit("otp_confirm_destination", f"{channel}:{identifier}")
+        user = otp_user(channel, identifier)
+        if not user:
+            return Response({"code": ["The code is invalid or expired."]}, status=400)
+        consume_challenge(user, OtpChallenge.Purpose.LOGIN, channel, identifier,
+                          serializer.validated_data["code"])
+        rotate_token(request._request)
+        access, refresh, _ = new_credentials(user)
+        response = Response({
+            "user": AccountSerializer(user).data,
+            "csrf_token": get_token(request._request),
+        })
+        set_auth_cookies(response, access, refresh)
+        return response
+
+
+class PhoneVerificationStatusView(AccountAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = PhoneStatusSerializer
+
+    @extend_schema(responses={200: PhoneStatusSerializer})
+    def get(self, request):
+        return Response({
+            "verified": VerifiedPhone.objects.filter(
+                user=request.user, number=request.user.phone_number,
+            ).exists(),
+            "sms_available": bool(sms_ready()),
+        })
+
+
+class PhoneVerificationRequestView(AccountAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = PhoneStatusSerializer
+
+    @extend_schema(request=None, responses={202: None})
+    def post(self, request):
+        if not sms_ready():
+            raise SmsUnavailable()
+        number = request.user.phone_number
+        if not number:
+            return Response({"phone_number": ["Add a phone number to your profile first."]}, status=400)
+        consume_limit("otp_request_ip", client_address(request))
+        consume_limit("otp_destination", f"verify:{number}")
+        create_challenge(request.user, OtpChallenge.Purpose.VERIFY_PHONE,
+                         OtpChallenge.Channel.SMS, number)
+        return Response(status=202)
+
+
+class PhoneVerificationConfirmView(AccountAPIView):
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = PhoneCodeSerializer
+
+    @extend_schema(responses={204: None})
+    def post(self, request):
+        consume_limit("otp_confirm_ip", client_address(request))
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        confirm_phone(request.user, serializer.validated_data["code"])
+        return Response(status=204)
 
 
 class GoogleLinkView(AccountAPIView):
@@ -153,8 +309,14 @@ class LogoutView(AccountAPIView):
 
     @extend_schema(request=None, responses={204: None})
     def post(self, request):
-        logout(request._request)
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        if getattr(request.auth, "pk", None):
+            request.auth.revoked_at = timezone.now()
+            request.auth.save(update_fields=["revoked_at"])
+        if settings.API_LEGACY_SESSION_AUTH:
+            logout(request._request)
+        response = Response(status=status.HTTP_204_NO_CONTENT)
+        clear_auth_cookies(response)
+        return response
 
 
 class MyAccountView(AccountAPIView):

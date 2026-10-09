@@ -8,8 +8,8 @@ BYdoc is a healthcare discovery and outpatient appointment platform for patients
 
 | Area | Current implementation |
 | --- | --- |
-| Patient accounts | Registration, email or username sign-in, optional Google sign-in, email verification, password recovery, and profile editing. |
-| Discovery and booking | Verified doctor and clinic discovery, live slots, short holds, fee review, and idempotent booking confirmation. PostgreSQL is the source of truth for appointment status. |
+| Patient accounts | Registration, password sign-in, one-time codes to a verified email or phone, optional Google sign-in, contact verification, password recovery, and profile editing. Browser API authentication uses short-lived JWT cookies and rotating refresh credentials. |
+| Discovery and booking | Verified doctor and clinic discovery, a nearby clinic map with permission-based location access, live slots, short holds, fee review, and idempotent booking confirmation. PostgreSQL is the source of truth for appointment status. |
 | Role dashboards | Separate patient, doctor, clinic, and platform-admin summaries with role-scoped data. |
 | Support | Guided help for app tasks, support request submission, case references and status, and staff case administration. Optional private AI classifies free-text topics; patients receive reviewed answers. |
 | Backend operations | Organization and clinic records, doctor verification data, notification outbox and inbox, preferences, audit-backed support cases, Celery jobs, and health checks. |
@@ -50,9 +50,9 @@ Prerequisites: Python 3.11, Node.js 22, and Docker Desktop. The commands below s
    npm.cmd run dev
    ```
 
-Open `http://localhost:3000`. Use `localhost` for both frontend and API so session cookies and CSRF work. The API base is `http://localhost:8000/api/v1/`; health endpoints are `/health/live/` and `/health/ready/`.
+Open `http://localhost:3000`. Use `localhost` for both frontend and API so JWT cookies and CSRF work. The API base is `http://localhost:8000/api/v1/`; health endpoints are `/health/live/` and `/health/ready/`.
 
-For email verification and password reset delivery, run a Celery worker and Beat in two more backend terminals. Development email is written to `backend/local-email`:
+For email verification, password reset, and one-time code delivery, run a Celery worker and Beat in two more backend terminals. Development email is written to `backend/local-email`:
 
 ```powershell
 # From backend, terminal 1
@@ -62,7 +62,7 @@ For email verification and password reset delivery, run a Celery worker and Beat
 .\venv\Scripts\python.exe -m celery -A config beat --loglevel=INFO --schedule "$env:TEMP\bydoc-celerybeat-schedule"
 ```
 
-See [account recovery](docs/account-recovery.md) for the delivery flow. Optional Google sign-in requires the same web client ID in root `.env` (`GOOGLE_OAUTH_CLIENT_ID`) and `frontend/.env.local` (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`); see [authentication setup](docs/email-google-sign-in.md). Do not put a Google client secret in the frontend.
+See [authentication, OTP, and map setup](docs/otp-jwt-nearby.md) for login flows and launch configuration. Optional Google sign-in requires the same web client ID in root `.env` (`GOOGLE_OAUTH_CLIENT_ID`) and `frontend/.env.local` (`NEXT_PUBLIC_GOOGLE_CLIENT_ID`). Do not put a Google client secret in the frontend. SMS sign-in remains unavailable until an AWS sender and approved templates are configured; email codes work with the local email backend.
 
 Guided help and support requests work without an AI model. To enable local topic classification, follow the [assistant setup](docs/ai-assistant.md). The model never writes a patient-facing answer or performs a booking action.
 
@@ -92,7 +92,7 @@ The [AWS deployment design and release runbook](docs/aws-deployment.md) covers p
 - Provisioning and testing the production environment, HTTPS, email delivery, monitoring, backup restoration, and incident procedures.
 - Completing clinic receptionist workflows, patient booking management, a full support inbox, and notification screens.
 - Reviewing accessibility and Bengali/Hindi coverage, plus clinical safety testing of the assistant before public healthcare use.
-- Resolving the phone OTP requirement in the planning drafts against the current email/password and optional Google sign-in implementation.
+- Registering and validating the SMS sender and approved templates, configuring a Google web client ID, and choosing a managed map tile service for production traffic.
 
 PostgreSQL is authoritative for bookings: a selected slot, hold, or sent notification is not a confirmed appointment. BYdoc does not currently provide diagnosis, treatment, emergency care, prescriptions, medical records, or consultation payments. Keep secrets, patient data, verification documents, local mail, virtual environments, and backups out of Git.
 

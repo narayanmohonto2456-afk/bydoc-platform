@@ -1,6 +1,6 @@
 # Patient account frontend
 
-This Next.js application implements registration, email or username sign-in, configurable Google sign-in, patient profile editing, verified email request/confirmation, password reset, and doctor discovery with appointment booking. It uses the existing Django session and CSRF APIs. See [email-google-sign-in.md](email-google-sign-in.md) for Google setup and account linking. It does not yet provide patient notification or support screens, family-member booking, a cancellation UI, or full Bengali and Hindi interface translations.
+This Next.js application implements registration, password or one-time-code sign-in, configurable Google sign-in, patient profile editing, contact verification, password reset, nearby clinic discovery, and appointment booking. Browser API authentication uses HttpOnly JWT cookies and CSRF protection. See [authentication, OTP, and nearby clinics](otp-jwt-nearby.md) for setup and [email-google-sign-in.md](email-google-sign-in.md) for Google account linking. It does not yet provide patient notification or support screens, family-member booking, a cancellation UI, or full Bengali and Hindi interface translations.
 
 The `/appointments` page searches active clinics and doctors with current verified registrations. Patients can view open slots, review the declared fee, hold a slot for a short period, and confirm a booking. The page shows confirmed status only from the booking API response. If confirmation is interrupted, it retains the same booking request ID for an idempotent retry. The backend checks doctor verification at slot lookup and again when holding or booking. Payments are made directly to the clinic.
 
@@ -56,6 +56,6 @@ npm.cmd run typecheck
 npm.cmd run build
 ```
 
-The frontend never sends a patient ID with profile updates. Session cookies remain HttpOnly; unsafe API requests fetch a fresh CSRF token and send it in `X-CSRFToken`. Verification and reset tokens are read from URL fragments and removed from browser history when their pages load.
+The frontend never sends a patient ID with profile updates. Access JWT and refresh cookies remain HttpOnly; unsafe API requests fetch a fresh CSRF token and send it in `X-CSRFToken`. Verification and reset tokens are read from URL fragments and removed from browser history when their pages load.
 
 The home page offers an interactive account setup guide. Keyboard users can move between its tabs with the left and right arrow keys. Forms show password visibility and strength feedback, and profile editing shows unsaved changes with a discard action. Motion respects the operating system's reduced motion preference.

@@ -9,6 +9,7 @@ type AuthState = {
   refresh: () => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
   googleLogin: (credential: string) => Promise<void>;
+  otpLogin: (channel: "email" | "sms", identifier: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -44,12 +45,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(result.user);
   }
 
+  async function otpLogin(channel: "email" | "sms", identifier: string, code: string) {
+    const result = await postJson<{ user: Account }>("/auth/otp/confirm/", { channel, identifier, code });
+    setUser(result.user);
+  }
+
   async function logout() {
     await postJson<void>("/auth/logout/", {});
     setUser(null);
   }
 
-  return <AuthContext.Provider value={{ user, loading, refresh, login, googleLogin, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, loading, refresh, login, googleLogin, otpLogin, logout }}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth(): AuthState {

@@ -70,6 +70,61 @@ class VerifiedEmail(models.Model):
         constraints = [models.UniqueConstraint(models.functions.Lower("address"), name="unique_verified_email_ci")]
 
 
+class VerifiedPhone(models.Model):
+    user = models.OneToOneField("accounts.User", on_delete=models.CASCADE, related_name="verified_phone")
+    number = models.CharField(max_length=16, unique=True, validators=[phone_validator])
+    verified_at = models.DateTimeField()
+
+
+class AuthSession(models.Model):
+    """Revocable JWT session with a rotating, hashed refresh credential."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="auth_sessions")
+    refresh_hash = models.CharField(max_length=64, unique=True)
+    auth_hash = models.CharField(max_length=64)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["user", "revoked_at"], name="auth_session_user_revoked_idx")]
+
+
+class OtpChallenge(models.Model):
+    class Purpose(models.TextChoices):
+        LOGIN = "login", "Sign in"
+        VERIFY_PHONE = "verify_phone", "Verify phone"
+
+    class Channel(models.TextChoices):
+        EMAIL = "email", "Email"
+        SMS = "sms", "SMS"
+
+    class State(models.TextChoices):
+        PENDING = "pending", "Pending"
+        PROCESSING = "processing", "Processing"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey("accounts.User", on_delete=models.CASCADE, related_name="otp_challenges")
+    purpose = models.CharField(max_length=20, choices=Purpose.choices)
+    channel = models.CharField(max_length=5, choices=Channel.choices)
+    destination = models.CharField(max_length=254)
+    state = models.CharField(max_length=12, choices=State.choices, default=State.PENDING)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    delivery_attempts = models.PositiveSmallIntegerField(default=0)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    locked_at = models.DateTimeField(null=True, blank=True)
+    next_attempt_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["state", "next_attempt_at"], name="otp_delivery_due_idx")]
+
+
 class GoogleIdentity(models.Model):
     user = models.OneToOneField(
         "accounts.User", on_delete=models.CASCADE, related_name="google_identity",
