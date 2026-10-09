@@ -101,8 +101,8 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": env("POSTGRES_DB", default="sehatsaathi"),
-        "USER": env("POSTGRES_USER", default="sehatsaathi"),
+        "NAME": env("POSTGRES_DB", default="bydoc"),
+        "USER": env("POSTGRES_USER", default="bydoc"),
         "PASSWORD": env(
             "POSTGRES_PASSWORD",
             default="local-development-password",
@@ -174,7 +174,8 @@ AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        "apps.accounts.jwt_auth.JWTAuthentication",
+        "apps.accounts.jwt_auth.LegacySessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -187,9 +188,13 @@ REST_FRAMEWORK = {
     ],
 }
 
+API_LEGACY_SESSION_AUTH = False
+AUTH_ACCESS_COOKIE_NAME = "bydoc-access"
+AUTH_REFRESH_COOKIE_NAME = "bydoc-refresh"
+
 SPECTACULAR_SETTINGS = {
-    "TITLE": "SehatSaathi API",
-    "DESCRIPTION": "SehatSaathi platform API",
+    "TITLE": "BYdoc API",
+    "DESCRIPTION": "BYdoc platform API",
     "VERSION": "1.0.0",
     "ENUM_NAME_OVERRIDES": {
         "AppointmentStatusEnum": [
@@ -234,6 +239,12 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = "UTC"
 
 CELERY_BEAT_SCHEDULE = {
+    "dispatch-otp-every-ten-seconds": {
+        "task": "accounts.dispatch_otp", "schedule": 10.0,
+    },
+    "recover-stale-otp-every-minute": {
+        "task": "accounts.recover_stale_otp", "schedule": 60.0,
+    },
     "dispatch-recovery-email-every-minute": {
         "task": "accounts.dispatch_recovery_email", "schedule": 60.0,
     },
@@ -259,7 +270,7 @@ CELERY_BEAT_SCHEDULE = {
 
 APPOINTMENT_HOLD_MINUTES = 5
 
-# Browser sessions for the patient-facing API.
+# Django sessions remain available for the admin site; API clients use JWT.
 CORS_ALLOW_CREDENTIALS = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
@@ -284,16 +295,28 @@ AUTH_RATE_LIMITS = {
     "reset_ip": (10, 3600),
     "reset_address": (5, 3600),
     "confirm_ip": (30, 3600),
+    "otp_request_ip": (10, 3600),
+    "otp_destination": (3, 900),
+    "otp_confirm_ip": (20, 900),
+    "otp_confirm_destination": (10, 900),
 }
 
 ACCOUNT_LINK_BASE_URL = env("ACCOUNT_LINK_BASE_URL", default="http://localhost:3000")
 GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="SehatSaathi <noreply@localhost>")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="BYdoc <noreply@localhost>")
 EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.filebased.EmailBackend")
 EMAIL_FILE_PATH = env("EMAIL_FILE_PATH", default=str(BASE_DIR / "local-email"))
 
-# The patient assistant calls a locally hosted Ollama service. It never receives
-# account, appointment, or profile records automatically.
+# Product guidance remains available when the optional local classifier is off.
+# The model never receives account, appointment, or profile records automatically.
+ASSISTANT_ENABLED = env.bool("ASSISTANT_ENABLED", default=True)
 AI_CHAT_ENABLED = env.bool("AI_CHAT_ENABLED", default=False)
 OLLAMA_BASE_URL = env("OLLAMA_BASE_URL", default="http://127.0.0.1:11434").rstrip("/")
 OLLAMA_MODEL = env("OLLAMA_MODEL", default="llama3.2:3b")
+
+OTP_SMS_ENABLED = env.bool("OTP_SMS_ENABLED", default=False)
+AWS_SMS_REGION = env("AWS_SMS_REGION", default="")
+AWS_SMS_ORIGINATION_ID = env("AWS_SMS_ORIGINATION_ID", default="")
+AWS_SMS_ENTITY_ID = env("AWS_SMS_ENTITY_ID", default="")
+AWS_SMS_LOGIN_TEMPLATE_ID = env("AWS_SMS_LOGIN_TEMPLATE_ID", default="")
+AWS_SMS_VERIFY_TEMPLATE_ID = env("AWS_SMS_VERIFY_TEMPLATE_ID", default="")

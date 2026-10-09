@@ -1,6 +1,6 @@
-# SehatSaathi API messages.
+# BYdoc API messages.
 msgid ""
-msgstr "Project-Id-Version: SehatSaathi\nReport-Msgid-Bugs-To: \nPOT-Creation-Date: 2026-09-09 00:00+0000\nPO-Revision-Date: 2026-09-09 00:00+0000\nLast-Translator: SehatSaathi team\nLanguage-Team: bn\nLanguage: bn\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nPlural-Forms: nplurals=2; plural=(n != 1);\n"
+msgstr "Project-Id-Version: BYdoc\nReport-Msgid-Bugs-To: \nPOT-Creation-Date: 2026-09-09 00:00+0000\nPO-Revision-Date: 2026-09-09 00:00+0000\nLast-Translator: BYdoc team\nLanguage-Team: bn\nLanguage: bn\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: 8bit\nPlural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "An authenticated user is required."
 msgstr "লগইন করা ব্যবহারকারী প্রয়োজন।"

@@ -10,7 +10,7 @@ def test_liveness_returns_ok(client):
     assert response.status_code == 200
     assert response.json() == {
         "status": "ok",
-        "service": "sehatsaathi-api",
+        "service": "bydoc-api",
     }
 
 

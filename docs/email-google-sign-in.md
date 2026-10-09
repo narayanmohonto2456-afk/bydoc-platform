@@ -2,7 +2,7 @@
 
 Patient sign-in accepts a username or a **verified** email address with a password. New frontend registrations collect an email and queue a verification link. Until that link is confirmed, the patient can sign in with the username but not the email. Legacy username/password accounts continue to work.
 
-Google sign-in uses [Google Identity Services](https://developers.google.com/identity/gsi/web/guides/display-button) in the browser. The backend checks the Google ID token signature, audience, issuer and expiry with `google-auth`, then identifies the Google account by its stable `sub` claim. Django keeps the session in an HttpOnly cookie; browser writes still require the existing CSRF token. The app requests no Google API access or refresh token.
+Google sign-in uses [Google Identity Services](https://developers.google.com/identity/gsi/web/guides/display-button) in the browser. The backend checks the Google ID token signature, audience, issuer and expiry with `google-auth`, then identifies the Google account by its stable `sub` claim. The API sets an HttpOnly access JWT cookie and a rotating refresh cookie; browser writes still require the existing CSRF token. The app requests no Google API access or Google refresh token.
 
 ## Google setup
 

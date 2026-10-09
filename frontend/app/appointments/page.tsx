@@ -68,6 +68,14 @@ export default function AppointmentsPage() {
   const [actionError, setActionError] = useState("");
 
   useEffect(() => {
+    const clinicName = new URLSearchParams(window.location.search).get("q")?.trim();
+    if (clinicName) {
+      setQuery(clinicName);
+      setSearch({ query: clinicName, district: "" });
+    }
+  }, []);
+
+  useEffect(() => {
     let active = true;
     const params = new URLSearchParams();
     if (search.query) params.set("q", search.query);
@@ -165,7 +173,7 @@ export default function AppointmentsPage() {
   }
 
   return <div className="wide-shell booking-shell">
-    <header className="booking-heading"><span className="eyebrow">Plan your visit</span><h1>Find care and book a time</h1><p>See a verified doctor, clinic, available time, and declared consultation fee before you confirm.</p></header>
+    <header className="booking-heading"><span className="eyebrow">Plan your visit</span><h1>Find care and book a time</h1><p>See a verified doctor, clinic, available time, and declared consultation fee before you confirm.</p><Link href="/clinics/nearby">Explore clinics near me →</Link></header>
     <form className="panel booking-search" onSubmit={submitSearch}>
       <div className="field"><label htmlFor="care-search">Doctor, specialty, or clinic</label><input id="care-search" value={query} onChange={event => setQuery(event.target.value)} maxLength={100} placeholder="e.g. cardiology or clinic name" /></div>
       <div className="field"><label htmlFor="care-district">District</label><input id="care-district" value={district} onChange={event => setDistrict(event.target.value)} maxLength={120} placeholder="e.g. Kolkata" /></div>
@@ -197,6 +205,6 @@ export default function AppointmentsPage() {
         </>}
       </section>
     </div>}
-    <p className="site-note">SehatSaathi does not provide emergency care or medical advice. For emergencies, contact local emergency services.</p>
+    <p className="site-note">BYdoc does not provide emergency care or medical advice. For emergencies, contact local emergency services.</p>
   </div>;
 }

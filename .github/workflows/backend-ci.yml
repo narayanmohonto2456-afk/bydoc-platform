@@ -31,8 +31,8 @@ jobs:
       DJANGO_SETTINGS_MODULE: config.settings.test
       DJANGO_SECRET_KEY: ci-only-key-not-for-production
       APP_DEBUG: "False"
-      POSTGRES_DB: sehatsaathi_ci
-      POSTGRES_USER: sehatsaathi
+      POSTGRES_DB: bydoc_ci
+      POSTGRES_USER: bydoc
       POSTGRES_PASSWORD: ci-only-postgres-password
       POSTGRES_HOST: 127.0.0.1
       POSTGRES_PORT: "5432"
@@ -42,13 +42,13 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_DB: sehatsaathi_ci
-          POSTGRES_USER: sehatsaathi
+          POSTGRES_DB: bydoc_ci
+          POSTGRES_USER: bydoc
           POSTGRES_PASSWORD: ci-only-postgres-password
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U sehatsaathi -d sehatsaathi_ci"
+          --health-cmd "pg_isready -U bydoc -d bydoc_ci"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

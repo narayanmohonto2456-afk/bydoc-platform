@@ -8,7 +8,7 @@ os.environ.setdefault(
     "config.settings.development",
 )
 
-app = Celery("sehatsaathi")
+app = Celery("bydoc")
 
 app.config_from_object(
     "django.conf:settings",

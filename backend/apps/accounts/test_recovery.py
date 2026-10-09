@@ -43,7 +43,7 @@ def test_verified_email_and_reset_flow():
     assert post(anonymous, "reset-confirm", {"token": token_for(reset), "password": PASSWORD}).status_code == 400
     user.refresh_from_db()
     assert user.check_password("New!83-River$Puzzle")
-    assert old_session.get(reverse("accounts:me")).status_code == 403
+    assert old_session.get(reverse("accounts:me")).status_code == 401
 
 
 def test_unknown_and_unverified_addresses_are_generic():

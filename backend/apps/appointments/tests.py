@@ -106,6 +106,37 @@ def create_slot(affiliation, hours_from_now=24):
     )
 
 
+def test_nearby_clinics_only_shows_active_bookable_locations(client):
+    affiliation = create_affiliation()
+    clinic = affiliation.clinic
+    clinic.latitude = 22.572645
+    clinic.longitude = 88.363892
+    clinic.save(update_fields=["latitude", "longitude"])
+
+    response = client.get(
+        "/api/v1/appointments/nearby-clinics/",
+        {"latitude": "22.5726", "longitude": "88.3639", "radius_km": "10"},
+    )
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()] == [str(clinic.pk)]
+    assert response.json()[0]["distance_km"] < 1
+
+    affiliation.accepts_online_bookings = False
+    affiliation.save(update_fields=["accepts_online_bookings"])
+    assert client.get(
+        "/api/v1/appointments/nearby-clinics/",
+        {"latitude": "22.5726", "longitude": "88.3639"},
+    ).json() == []
+
+
+def test_nearby_clinic_parameters_are_bounded(client):
+    response = client.get(
+        "/api/v1/appointments/nearby-clinics/",
+        {"latitude": "91", "longitude": "88", "radius_km": "1000"},
+    )
+    assert response.status_code == 400
+
+
 def test_user_can_hold_an_open_slot():
     user = create_user("holding-user")
     slot = create_slot(create_affiliation())

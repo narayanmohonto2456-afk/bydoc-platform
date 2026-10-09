@@ -16,7 +16,7 @@ def liveness(request):
     return JsonResponse(
         {
             "status": "ok",
-            "service": "sehatsaathi-api",
+            "service": "bydoc-api",
         }
     )
 
