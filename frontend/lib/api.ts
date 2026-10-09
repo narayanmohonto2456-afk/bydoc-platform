@@ -49,6 +49,33 @@ async function csrfToken(): Promise<string> {
   return data.csrf_token;
 }
 
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshSession(): Promise<boolean> {
+  const refreshOnce = async () => {
+    // Another tab may have refreshed while this request was waiting for the lock.
+    const current = await fetch(`${apiBase}/auth/me/`, { credentials: "include", cache: "no-store" });
+    if (current.ok) return true;
+    const headers = new Headers({ "X-CSRFToken": await csrfToken() });
+    const refreshed = await fetch(`${apiBase}/auth/token/refresh/`, {
+      method: "POST", headers, credentials: "include", cache: "no-store",
+    });
+    return refreshed.ok;
+  };
+
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return navigator.locks.request("bydoc-auth-refresh", refreshOnce);
+  }
+  return refreshOnce();
+}
+
+function sharedRefresh(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = refreshSession().finally(() => { refreshInFlight = null; });
+  }
+  return refreshInFlight;
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method || "GET").toUpperCase();
   const headers = new Headers(init.headers);
@@ -68,11 +95,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     response = await fetch(`${apiBase}${path}`, request);
     if (response.status === 401 && !path.startsWith("/auth/token/")
       && !["/auth/login/", "/auth/google/"].includes(path)) {
-      const refreshHeaders = new Headers({ "X-CSRFToken": await csrfToken() });
-      const refreshed = await fetch(`${apiBase}/auth/token/refresh/`, {
-        method: "POST", headers: refreshHeaders, credentials: "include", cache: "no-store",
-      });
-      if (refreshed.ok) response = await fetch(`${apiBase}${path}`, request);
+      if (await sharedRefresh()) response = await fetch(`${apiBase}${path}`, request);
     }
   } catch {
     throw new ApiError(0, "Cannot reach BYdoc right now. Please try again.");

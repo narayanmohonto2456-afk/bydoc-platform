@@ -49,5 +49,8 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Test browser auth retry logic
+        run: npm run test:auth
+
       - name: Build standalone server
         run: npm run build
