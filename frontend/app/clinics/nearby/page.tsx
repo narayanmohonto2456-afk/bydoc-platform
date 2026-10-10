@@ -14,6 +14,13 @@ type Point = { latitude: number; longitude: number };
 const tileUrl = process.env.NEXT_PUBLIC_MAP_TILE_URL || "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const attribution = process.env.NEXT_PUBLIC_MAP_ATTRIBUTION || "&copy; OpenStreetMap contributors";
 
+function directionsUrl(clinic: Clinic): string {
+  const url = new URL("https://www.google.com/maps/dir/");
+  url.searchParams.set("api", "1");
+  url.searchParams.set("destination", `${clinic.latitude},${clinic.longitude}`);
+  return url.toString();
+}
+
 export default function NearbyClinicsPage() {
   const [point, setPoint] = useState<Point | null>(null);
   const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -70,9 +77,14 @@ export default function NearbyClinicsPage() {
       const bounds: [number, number][] = [[point.latitude, point.longitude]];
       for (const clinic of clinics) {
         const position: [number, number] = [clinic.latitude, clinic.longitude];
+        const directions = document.createElement("a");
+        directions.href = directionsUrl(clinic);
+        directions.target = "_blank";
+        directions.rel = "noopener noreferrer";
+        directions.textContent = `Get directions to ${clinic.name} in Google Maps`;
         L.circleMarker(position, {
           radius: 10, color: "#145b45", fillColor: "#22a36c", fillOpacity: 0.9,
-        }).addTo(map).bindTooltip(clinic.name).on("click", () => setSelected(clinic.id));
+        }).addTo(map).bindTooltip(clinic.name).bindPopup(directions).on("click", () => setSelected(clinic.id));
         bounds.push(position);
       }
       if (bounds.length > 1) map.fitBounds(bounds, { padding: [36, 36], maxZoom: 14 });
@@ -99,10 +111,14 @@ export default function NearbyClinicsPage() {
       <p className="dashboard-note">The map loads tiles from {tileUrl.includes("openstreetmap.org") ? "OpenStreetMap" : "the configured map provider"}; that provider can see the map area your browser requests. The clinic list below works independently of map tiles.</p>
       <h2>{clinics.length ? `${clinics.length} nearby clinic${clinics.length === 1 ? "" : "s"}` : "No matching clinics nearby"}</h2>
       {!clinics.length && <p>Try searching another district or check again later. Clinics without verified bookable doctors or map coordinates are not shown.</p>}
+      {!!clinics.length && <p className="dashboard-note">Distances are approximate straight-line distances. Open directions for the travel route and time.</p>}
       <ul className="nearby-list">{clinics.map(clinic => <li key={clinic.id} className={selected === clinic.id ? "is-selected" : ""}>
         <button type="button" onClick={() => focusClinic(clinic)}><strong>{clinic.name}</strong><span>{clinic.distance_km.toFixed(1)} km away</span></button>
         <p>{clinic.address}, {clinic.locality}, {clinic.district}, {clinic.state}</p>
-        <Link href={`/appointments?q=${encodeURIComponent(clinic.name)}`}>See doctors and appointments →</Link>
+        <div className="nearby-actions">
+          <Link href={`/appointments?q=${encodeURIComponent(clinic.name)}`}>See doctors and appointments →</Link>
+          <a href={directionsUrl(clinic)} target="_blank" rel="noopener noreferrer">Get directions in Google Maps ↗</a>
+        </div>
       </li>)}</ul>
     </>}
   </div>;
