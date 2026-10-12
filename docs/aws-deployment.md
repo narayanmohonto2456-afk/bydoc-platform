@@ -53,6 +53,9 @@ Set `DJANGO_SETTINGS_MODULE=config.settings.production` on the API, worker, Beat
 | `DEFAULT_FROM_EMAIL` | Verified sender, e.g. `BYdoc <no-reply@example.com>`. |
 | `TRUSTED_PROXY_SSL_HEADER` | `True` only when the ALB is the sole inbound path to the API and its `X-Forwarded-Proto` behavior has been verified against a spoofed client header. |
 | `GOOGLE_OAUTH_CLIENT_ID` | Optional public Google web client ID, matching the web build. Configure authorized origins in Google Cloud. |
+| `RAZORPAY_PAYMENTS_ENABLED` | Keep `false` until Route onboarding, linked clinic accounts, webhook delivery, refunds, and reconciliation pass in staging. |
+| `RAZORPAY_KEY_ID` | Public live key ID when payments are enabled. Production rejects test key IDs. |
+| `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` | Separate secrets in Secrets Manager for the API and worker. Never expose these to the web build. |
 | `OTP_SMS_ENABLED` | Keep `false` until the AWS sender, registration, approved templates, and end-to-end delivery have been verified. |
 | `AWS_SMS_REGION`, `AWS_SMS_ORIGINATION_ID`, `AWS_SMS_ENTITY_ID`, `AWS_SMS_LOGIN_TEMPLATE_ID`, `AWS_SMS_VERIFY_TEMPLATE_ID` | Required when SMS is enabled. Give the application task role only the SMS send permissions and registered origination identity it needs. For India, use the approved DLT entity and template IDs matching the actual message text. |
 
@@ -75,6 +78,7 @@ The guided help and support-request chat is enabled by default through `ASSISTAN
 - Production infrastructure as code, AWS account/Region/domains, budgets, IAM review, key rotation, and alert routing have not been configured in this repository.
 - Staff and administrator MFA, a permissions audit across patient and clinic endpoints, and an independent security review are required before handling real patient information. Google sign-in remains optional until a client ID is configured.
 - Patient booking management and clinic operations are still incomplete. SMS OTP code exists but needs an AWS sender and approved templates, live delivery validation, and registration before launch. Google sign-in needs a Google web client ID. Use a managed map tile service with its required attribution for production traffic.
+- Live consultation payments need Razorpay Route approval, verified clinic linked accounts, a reachable signed webhook, refund/transfer reversal tests, and daily settlement reconciliation. Follow the [payment runbook](payments.md).
 - File uploads and verification documents must use a private, encrypted object store with access controls and malware scanning before they are enabled. The current container filesystem is ephemeral.
 - Complete a staging restore drill, load/concurrency test, accessibility review, and incident response rehearsal before public launch.
 

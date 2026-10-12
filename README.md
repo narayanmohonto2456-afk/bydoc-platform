@@ -10,6 +10,7 @@ BYdoc is a healthcare discovery and outpatient appointment platform for patients
 | --- | --- |
 | Patient accounts | Registration, password sign-in, one-time codes to a verified email or phone, optional Google sign-in, contact verification, password recovery, and profile editing. Browser API authentication uses short-lived JWT cookies and rotating refresh credentials. |
 | Discovery and booking | Verified doctor and clinic discovery, a nearby clinic map with permission-based location access, live slots, short holds, fee review, and idempotent booking confirmation. PostgreSQL is the source of truth for appointment status. |
+| Consultation payments | Optional Razorpay Route checkout after booking for enabled clinics, with server-verified capture, payment status, and full refunds after cancellation. Pay at clinic remains available. |
 | Role dashboards | Separate patient, doctor, clinic, and platform-admin summaries with role-scoped data. |
 | Support | Guided help for app tasks, support request submission, case references and status, and staff case administration. Optional private AI classifies free-text topics; patients receive reviewed answers. |
 | Backend operations | Organization and clinic records, doctor verification data, notification outbox and inbox, preferences, audit-backed support cases, Celery jobs, and health checks. |
@@ -66,6 +67,8 @@ See [authentication, OTP, and map setup](docs/otp-jwt-nearby.md) for login flows
 
 Guided help and support requests work without an AI model. To enable local topic classification, follow the [assistant setup](docs/ai-assistant.md). The model never writes a patient-facing answer or performs a booking action.
 
+Online consultation payments are disabled by default. See the [Razorpay Route setup and refund runbook](docs/payments.md) before enabling them. Booking works with pay at clinic while payment credentials and linked clinic accounts are absent.
+
 ## Verify a local change
 
 With PostgreSQL and Redis running, from `backend`:
@@ -95,8 +98,9 @@ The [AWS deployment design and release runbook](docs/aws-deployment.md) covers p
 - Completing clinic receptionist workflows, patient booking management, a full support inbox, and notification screens.
 - Reviewing accessibility and Bengali/Hindi coverage, plus clinical safety testing of the assistant before public healthcare use.
 - Registering and validating the SMS sender and approved templates, configuring a Google web client ID, and choosing a managed map tile service for production traffic.
+- Completing Razorpay merchant and Route onboarding, linked clinic accounts, live webhook delivery, refund and transfer testing, and finance reconciliation before enabling live payments.
 
-PostgreSQL is authoritative for bookings: a selected slot, hold, or sent notification is not a confirmed appointment. BYdoc does not currently provide diagnosis, treatment, emergency care, prescriptions, medical records, or consultation payments. Keep secrets, patient data, verification documents, local mail, virtual environments, and backups out of Git.
+PostgreSQL is authoritative for bookings: a selected slot, hold, or sent notification is not a confirmed appointment. BYdoc does not currently provide diagnosis, treatment, emergency care, prescriptions, or medical records. Keep secrets, patient data, verification documents, local mail, virtual environments, and backups out of Git.
 
 ## Repository and documentation
 

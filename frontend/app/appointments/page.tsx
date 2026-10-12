@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { ApiError, apiRequest, postJson } from "@/lib/api";
+import { AppointmentPayment } from "@/components/AppointmentPayment";
 
 type Provider = {
   id: string; doctor_id: string; doctor_name: string; specialty: string | null;
@@ -20,7 +21,7 @@ type Slot = {
 };
 type Hold = { slot_id: string; hold_token: string; hold_expires_at: string };
 type Appointment = Slot & {
-  booking_reference: string; status: string; created_at: string;
+  id: string; booking_reference: string; status: string; created_at: string;
 };
 
 function localDate(timeZone: string): string {
@@ -184,20 +185,20 @@ export default function AppointmentsPage() {
       <section aria-labelledby="provider-heading"><h2 id="provider-heading">Doctors and clinics</h2><ul className="provider-list">{providers.map(provider => <li key={provider.id}><button type="button" className={`provider-card${selected?.id === provider.id ? " is-selected" : ""}`} onClick={() => selectProvider(provider)} aria-pressed={selected?.id === provider.id}>
         <span className="provider-name">{provider.doctor_name}</span><span>{provider.specialty || "Specialty not listed"} · Verified registration</span>
         <strong>{provider.clinic_name}</strong><span>{provider.locality}, {provider.district}, {provider.state}</span>
-        <span>{fee(provider.consultation_fee, provider.currency_code)} · Pay at clinic</span>
+        <span>{fee(provider.consultation_fee, provider.currency_code)} · Pay at clinic or online when available</span>
       </button></li>)}</ul>{nextPage && <button className="button button-secondary" type="button" onClick={loadMore} disabled={providerLoading}>Load more doctors</button>}</section>
       <section className="panel booking-detail" aria-labelledby="booking-detail-heading">
         {!selected ? <><h2 id="booking-detail-heading">Choose a doctor</h2><p>Select a doctor and clinic to see available times.</p></> : <>
           <span className="eyebrow">Verified provider</span><h2 id="booking-detail-heading">{selected.doctor_name}</h2>
           <p><strong>{selected.clinic_name}</strong><br />{selected.address}, {selected.locality}, {selected.district}</p>
           {selected.languages.length > 0 && <p>Languages: {selected.languages.join(", ")}</p>}
-          <p className="booking-fee">Consultation fee: <strong>{fee(selected.consultation_fee, selected.currency_code)}</strong><br /><small>Pay the provider directly at the clinic. The fee may change; confirm with the clinic if needed.</small></p>
+          <p className="booking-fee">Consultation fee: <strong>{fee(selected.consultation_fee, selected.currency_code)}</strong><br /><small>Pay at the clinic or choose online payment after booking, when the clinic enables it.</small></p>
           {selected.schedule_updated_at && <p className="dashboard-note">Schedule last updated {visitTime(selected.schedule_updated_at, selected.timezone)}</p>}
-          {booking ? <div className="message message-success" role="status"><strong>Appointment confirmed</strong><p>{visitTime(booking.starts_at, selected.timezone)} at {booking.clinic_name}</p><p>Booking reference: {booking.booking_reference}</p><Link href="/dashboard/patient">View my dashboard</Link></div> : <>
+          {booking ? <div className="message message-success" role="status"><strong>Appointment confirmed</strong><p>{visitTime(booking.starts_at, selected.timezone)} at {booking.clinic_name}</p><p>Booking reference: {booking.booking_reference}</p><AppointmentPayment appointmentId={booking.id} /><Link href="/dashboard/patient">View my dashboard</Link></div> : <>
             <div className="field"><label htmlFor="appointment-date">Choose a date</label><input id="appointment-date" type="date" value={date} min={localDate(selected.timezone)} onChange={event => { setDate(event.target.value); setSlotLoading(Boolean(event.target.value)); setSlots([]); setChosen(null); setHold(null); setActionError(""); }} /></div>
             {slotError && <p className="message message-error" role="alert">{slotError}</p>}
             {!date ? <p className="dashboard-empty">Choose a date to see available times.</p> : slotLoading ? <p role="status">Checking available times…</p> : !slots.length && !slotError ? <p className="dashboard-empty">No open times on this date. Try another date.</p> : <div role="group" aria-label="Available appointment times" className="slot-grid">{slots.map(slot => <button key={slot.id} type="button" className={chosen?.id === slot.id ? "is-selected" : ""} disabled={!!hold} aria-pressed={chosen?.id === slot.id} onClick={() => { setChosen(slot); setActionError(""); }}>{new Intl.DateTimeFormat("en-IN", { timeZone: selected.timezone, hour: "numeric", minute: "2-digit" }).format(new Date(slot.starts_at))}</button>)}</div>}
-            {chosen && <div className="booking-review"><h3>Review your visit</h3><p>{visitTime(chosen.starts_at, selected.timezone)}<br />{selected.doctor_name} at {selected.clinic_name}</p><p>Consultation fee: <strong>{fee(chosen.consultation_fee, chosen.currency_code)}</strong> · Pay at clinic</p>
+            {chosen && <div className="booking-review"><h3>Review your visit</h3><p>{visitTime(chosen.starts_at, selected.timezone)}<br />{selected.doctor_name} at {selected.clinic_name}</p><p>Consultation fee: <strong>{fee(chosen.consultation_fee, chosen.currency_code)}</strong> · Pay at clinic or online when available</p>
               {!user && !authLoading ? <p><Link href="/login">Sign in</Link> to book this time.</p> : !hold ? <button type="button" className="button" disabled={actionLoading || authLoading} onClick={holdChosenSlot}>{actionLoading ? "Holding time…" : "Continue to confirmation"}</button> : <><p className="dashboard-note">Held until {visitTime(hold.hold_expires_at, selected.timezone)}. Leaving this page lets the hold expire.</p><button type="button" className="button" disabled={actionLoading} onClick={confirmBooking}>{actionLoading ? "Confirming…" : "Confirm appointment"}</button></>}
             </div>}
             {actionError && <p className="message message-error" role="alert">{actionError}</p>}

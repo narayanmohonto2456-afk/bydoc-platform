@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { administrationUrl, ApiError, apiRequest } from "@/lib/api";
+import { AppointmentPayment } from "@/components/AppointmentPayment";
 
 type Role = "patient" | "doctor" | "clinic" | "admin";
 type RolesResponse = { roles: Role[]; preferred: Role };
@@ -86,6 +87,7 @@ function AppointmentList({ appointments, clinicView = false, timeZone }: { appoi
       <div className="dashboard-appointment-time"><strong>{dateTime(item.starts_at, timeZone)}</strong><span>Booking {item.booking_reference}</span></div>
       <div className="dashboard-appointment-person"><strong>{clinicView ? item.patient_name : item.doctor_name}</strong><span>{clinicView ? item.doctor_name : item.clinic_name}</span></div>
       <span className={`dashboard-status dashboard-status-${item.status}`}>{statusLabel(item.status)}</span>
+      {!clinicView && <AppointmentPayment appointmentId={item.id} />}
     </li>)}
   </ol>;
 }
