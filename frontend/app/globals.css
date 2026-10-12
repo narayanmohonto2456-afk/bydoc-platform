@@ -176,3 +176,13 @@ h3 { margin: .2rem 0 .8rem; font-size: 1.4rem; }
 .provider-list { display: grid; gap: .75rem; list-style: none; padding: 0; margin: 0 0 1rem; }.provider-card { display: grid; gap: .25rem; width: 100%; padding: 1.2rem; border: 1px solid var(--line); border-radius: 16px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; }.provider-card:hover { border-color: #8bc7a5; transform: translateY(-2px); box-shadow: 0 10px 24px #1c463514; }.provider-card.is-selected { border-color: var(--green); background: #f5fbf6; box-shadow: 0 0 0 3px #13786520; }.provider-card span { color: var(--muted); font-size: .86rem; }.provider-card .provider-name { color: var(--green-dark); font-size: 1.16rem; font-weight: 800; }.provider-card strong { margin-top: .35rem; }
 .booking-detail { padding: clamp(1.35rem, 3vw, 2rem); }.booking-detail p { color: var(--ink-soft); }.booking-fee { padding: .9rem; border-radius: 12px; background: #edf7ef; }.booking-fee small { color: var(--muted); }.slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: .55rem; }.slot-grid button { min-height: 44px; padding: .5rem; border: 1px solid #a9cdb6; border-radius: 10px; background: #fff; color: var(--green-dark); cursor: pointer; font-weight: 800; }.slot-grid button:hover, .slot-grid button.is-selected { border-color: var(--green); background: #e3f4e8; }.slot-grid button:disabled { opacity: .55; cursor: not-allowed; }.booking-review { margin-top: 1.4rem; padding: 1.1rem; border: 1px solid #c4dfcd; border-radius: 14px; background: #f8fcf8; }.booking-review h3 { margin-bottom: .4rem; }.booking-review p { margin: .5rem 0 1rem; }
 @media (max-width: 750px) { .booking-search, .booking-layout { grid-template-columns: 1fr; }.booking-search { align-items: stretch; }.booking-detail { order: -1; } }
+.join-shell { padding-block: 3rem 5rem; }
+.join-tabs { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1.5rem 0; }
+.join-panel { max-width: 760px; }
+.join-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem 1.25rem; margin-top: 1.5rem; }
+.join-form .field { min-width: 0; }
+.join-form .field input { width: 100%; }
+.join-form .join-attestation, .join-form > .button { grid-column: 1 / -1; }
+.join-attestation { display: flex; align-items: flex-start; gap: .7rem; line-height: 1.5; }
+.join-attestation input { margin-top: .3rem; }
+@media (max-width: 640px) { .join-form { grid-template-columns: 1fr; } }

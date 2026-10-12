@@ -52,6 +52,7 @@ LOCAL_APPS = [
     "apps.doctors",
     "apps.appointments",
     "apps.payments.apps.PaymentsConfig",
+    "apps.onboarding.apps.OnboardingConfig",
     "apps.notifications",
     "apps.support.apps.SupportConfig",
     "apps.preferences.apps.PreferencesConfig",

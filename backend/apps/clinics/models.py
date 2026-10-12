@@ -236,7 +236,4 @@ class Clinic(models.Model):
         ]
 
     def __str__(self) -> str:
-        return (
-        f"{self.user} — "
-        f"{self.organization} ({self.role})"
-    )
+        return self.name

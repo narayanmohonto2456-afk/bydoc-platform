@@ -129,7 +129,7 @@ function ClinicContent({ data, selectedClinicId, onSelectClinic }: { data: Clini
 
 function AdminContent({ data }: { data: AdminOverview }) {
   return <>
-    <div className="dashboard-stats"><Stat value={data.account_count} label="Accounts" /><Stat value={data.doctor_count} label="Doctor profiles" /><Stat value={data.clinic_count} label="Clinics" /><Stat value={data.pending_registrations_count} label="Registrations pending" /><Stat value={data.open_support_count} label="Support cases open" /></div>
+    <div className="dashboard-stats"><Stat value={data.account_count} label="Accounts" /><Stat value={data.doctor_count} label="Doctor profiles" /><Stat value={data.clinic_count} label="Clinics" /><Stat value={data.pending_registrations_count} label="Provider reviews pending" /><Stat value={data.open_support_count} label="Support cases open" /></div>
     <section className="panel dashboard-section" aria-labelledby="admin-workspace-heading"><span className="eyebrow">Platform operations</span><h2 id="admin-workspace-heading">Administration</h2><p>Review records and permitted actions in the Django administration site.</p><a className="button" href={administrationUrl()}>Open administration</a><p className="dashboard-note">This overview contains aggregate counts. Actions remain protected by Django permissions.</p></section>
   </>;
 }

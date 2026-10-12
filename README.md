@@ -12,6 +12,7 @@ BYdoc is a healthcare discovery and outpatient appointment platform for patients
 | Discovery and booking | Verified doctor and clinic discovery, a nearby clinic map with permission-based location access, live slots, short holds, fee review, and idempotent booking confirmation. PostgreSQL is the source of truth for appointment status. |
 | Consultation payments | Optional Razorpay Route checkout after booking for enabled clinics, with server-verified capture, payment status, and full refunds after cancellation. Pay at clinic remains available. |
 | Role dashboards | Separate patient, doctor, clinic, and platform-admin summaries with role-scoped data. |
+| Provider applications | Doctors and clinic representatives can submit registration details from an email-verified account. Independent admin review creates approved provider records; pending applications stay private. |
 | Support | Guided help for app tasks, support request submission, case references and status, and staff case administration. Optional private AI classifies free-text topics; patients receive reviewed answers. |
 | Backend operations | Organization and clinic records, doctor verification data, notification outbox and inbox, preferences, audit-backed support cases, Celery jobs, and health checks. |
 
@@ -68,6 +69,8 @@ See [authentication, OTP, and map setup](docs/otp-jwt-nearby.md) for login flows
 Guided help and support requests work without an AI model. To enable local topic classification, follow the [assistant setup](docs/ai-assistant.md). The model never writes a patient-facing answer or performs a booking action.
 
 Online consultation payments are disabled by default. See the [Razorpay Route setup and refund runbook](docs/payments.md) before enabling them. Booking works with pay at clinic while payment credentials and linked clinic accounts are absent.
+
+Doctors and clinics can apply through `/join`. See the [provider onboarding guide](docs/provider-onboarding.md) for verification and review steps. No identity documents are uploaded in this first version.
 
 ## Verify a local change
 

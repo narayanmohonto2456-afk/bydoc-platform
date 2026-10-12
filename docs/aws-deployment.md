@@ -80,6 +80,7 @@ The guided help and support-request chat is enabled by default through `ASSISTAN
 - Patient booking management and clinic operations are still incomplete. SMS OTP code exists but needs an AWS sender and approved templates, live delivery validation, and registration before launch. Google sign-in needs a Google web client ID. Use a managed map tile service with its required attribution for production traffic.
 - Live consultation payments need Razorpay Route approval, verified clinic linked accounts, a reachable signed webhook, refund/transfer reversal tests, and daily settlement reconciliation. Follow the [payment runbook](payments.md).
 - File uploads and verification documents must use a private, encrypted object store with access controls and malware scanning before they are enabled. The current container filesystem is ephemeral.
+- Doctor and clinic application forms collect registration details for manual review. Establish a documented registry-check procedure, an authorized reviewer rota, correction and suspension process, and applicant communications before broad self-service onboarding. See [provider onboarding](provider-onboarding.md).
 - Complete a staging restore drill, load/concurrency test, accessibility review, and incident response rehearsal before public launch.
 
 Do not treat a successful container build or Django deployment check as approval to use the service with real patient data.
