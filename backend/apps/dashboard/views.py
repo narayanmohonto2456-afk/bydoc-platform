@@ -21,6 +21,7 @@ from apps.accounts.models import User
 from apps.appointments.models import Appointment
 from apps.clinics.models import Clinic
 from apps.doctors.models import DoctorProfile, DoctorRegistration
+from apps.onboarding.models import ClinicApplication, DoctorApplication
 from apps.organizations.models import Organization, OrganizationMembership
 from apps.support.models import SupportCase
 
@@ -222,7 +223,8 @@ class AdminDashboardView(DashboardView):
             "clinic_count": Clinic.objects.count(),
             "pending_registrations_count": DoctorRegistration.objects.filter(
                 verification_status=DoctorRegistration.VerificationStatus.PENDING,
-            ).count(),
+            ).count() + DoctorApplication.objects.filter(status="pending").count()
+            + ClinicApplication.objects.filter(status="pending").count(),
             "open_support_count": SupportCase.objects.exclude(
                 status__in=[SupportCase.Status.RESOLVED, SupportCase.Status.CLOSED],
             ).count(),

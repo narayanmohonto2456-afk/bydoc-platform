@@ -664,4 +664,8 @@ def cancel_appointment(
         appointment.pk
     )
 
+    from apps.payments.services import mark_cancelled_for_refund
+
+    mark_cancelled_for_refund(appointment)
+
     return appointment

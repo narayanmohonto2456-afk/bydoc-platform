@@ -22,6 +22,8 @@ The `/clinics/nearby` page asks for browser location only when the patient selec
 
 The map loads third-party tiles in the browser. `NEXT_PUBLIC_MAP_TILE_URL` and `NEXT_PUBLIC_MAP_ATTRIBUTION` are embedded at frontend build time, including in the production Docker build arguments. The example uses public OpenStreetMap tiles for development; choose a tile service with an appropriate production usage agreement and display its attribution. Review the [OpenStreetMap tile usage policy](https://operations.osmfoundation.org/policies/tiles/).
 
+The displayed clinic distance is straight-line distance. Each clinic card and map marker offers **Get directions**, which opens Google Maps with the clinic coordinates as the destination. Google Maps chooses or asks for the starting point. This Maps URL needs neither BYdoc Google sign-in nor a Google Maps API key; routing stays in Google Maps.
+
 ## Release checks
 
 Run migrations, the backend tests and schema validation, frontend typecheck and build, then verify password, email OTP, SMS verification and login, Google sign-in, token refresh, logout, and nearby discovery in staging. Use synthetic accounts and a real browser over HTTPS for cookie and geolocation checks. Keep SMS disabled until the AWS registration and sender test pass.

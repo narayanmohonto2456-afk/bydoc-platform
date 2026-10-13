@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { administrationUrl, ApiError, apiRequest } from "@/lib/api";
+import { AppointmentPayment } from "@/components/AppointmentPayment";
 
 type Role = "patient" | "doctor" | "clinic" | "admin";
 type RolesResponse = { roles: Role[]; preferred: Role };
@@ -86,6 +87,7 @@ function AppointmentList({ appointments, clinicView = false, timeZone }: { appoi
       <div className="dashboard-appointment-time"><strong>{dateTime(item.starts_at, timeZone)}</strong><span>Booking {item.booking_reference}</span></div>
       <div className="dashboard-appointment-person"><strong>{clinicView ? item.patient_name : item.doctor_name}</strong><span>{clinicView ? item.doctor_name : item.clinic_name}</span></div>
       <span className={`dashboard-status dashboard-status-${item.status}`}>{statusLabel(item.status)}</span>
+      {!clinicView && <AppointmentPayment appointmentId={item.id} />}
     </li>)}
   </ol>;
 }
@@ -127,7 +129,7 @@ function ClinicContent({ data, selectedClinicId, onSelectClinic }: { data: Clini
 
 function AdminContent({ data }: { data: AdminOverview }) {
   return <>
-    <div className="dashboard-stats"><Stat value={data.account_count} label="Accounts" /><Stat value={data.doctor_count} label="Doctor profiles" /><Stat value={data.clinic_count} label="Clinics" /><Stat value={data.pending_registrations_count} label="Registrations pending" /><Stat value={data.open_support_count} label="Support cases open" /></div>
+    <div className="dashboard-stats"><Stat value={data.account_count} label="Accounts" /><Stat value={data.doctor_count} label="Doctor profiles" /><Stat value={data.clinic_count} label="Clinics" /><Stat value={data.pending_registrations_count} label="Provider reviews pending" /><Stat value={data.open_support_count} label="Support cases open" /></div>
     <section className="panel dashboard-section" aria-labelledby="admin-workspace-heading"><span className="eyebrow">Platform operations</span><h2 id="admin-workspace-heading">Administration</h2><p>Review records and permitted actions in the Django administration site.</p><a className="button" href={administrationUrl()}>Open administration</a><p className="dashboard-note">This overview contains aggregate counts. Actions remain protected by Django permissions.</p></section>
   </>;
 }

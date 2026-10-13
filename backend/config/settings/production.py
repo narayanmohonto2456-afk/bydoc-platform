@@ -100,6 +100,13 @@ if OTP_SMS_ENABLED:
     AWS_SMS_LOGIN_TEMPLATE_ID = required("AWS_SMS_LOGIN_TEMPLATE_ID")
     AWS_SMS_VERIFY_TEMPLATE_ID = required("AWS_SMS_VERIFY_TEMPLATE_ID")
 
+if RAZORPAY_PAYMENTS_ENABLED:
+    RAZORPAY_KEY_ID = required("RAZORPAY_KEY_ID")
+    RAZORPAY_KEY_SECRET = required("RAZORPAY_KEY_SECRET")
+    RAZORPAY_WEBHOOK_SECRET = required("RAZORPAY_WEBHOOK_SECRET")
+    if not RAZORPAY_KEY_ID.startswith("rzp_live_"):
+        raise ImproperlyConfigured("Production Razorpay payments require a live key ID.")
+
 SECURE_SSL_REDIRECT = True
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = False
@@ -128,6 +135,10 @@ STORAGES = {
 # from the actual TLS connection. Otherwise forwarded headers are untrusted.
 if os.environ.get("TRUSTED_PROXY_SSL_HEADER", "False").lower() == "true":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Render states that it sets the first X-Forwarded-For address to the real
+# client. Enable only after confirming that behavior on the actual service.
+AUTH_TRUST_FORWARDED_CLIENT_IP = os.environ.get("TRUSTED_PROXY_CLIENT_IP", "False").lower() == "true"
 
 if AI_CHAT_ENABLED:
     OLLAMA_BASE_URL = required("OLLAMA_BASE_URL").rstrip("/")

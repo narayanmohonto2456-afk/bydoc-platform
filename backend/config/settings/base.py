@@ -51,6 +51,8 @@ LOCAL_APPS = [
     "apps.clinics",
     "apps.doctors",
     "apps.appointments",
+    "apps.payments.apps.PaymentsConfig",
+    "apps.onboarding.apps.OnboardingConfig",
     "apps.notifications",
     "apps.support.apps.SupportConfig",
     "apps.preferences.apps.PreferencesConfig",
@@ -239,6 +241,9 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = "UTC"
 
 CELERY_BEAT_SCHEDULE = {
+    "reconcile-payments-every-minute": {
+        "task": "payments.reconcile", "schedule": 60.0,
+    },
     "dispatch-otp-every-ten-seconds": {
         "task": "accounts.dispatch_otp", "schedule": 10.0,
     },
@@ -270,6 +275,12 @@ CELERY_BEAT_SCHEDULE = {
 
 APPOINTMENT_HOLD_MINUTES = 5
 
+# Razorpay Route requires an approved platform account and linked clinic accounts.
+RAZORPAY_KEY_ID = env("RAZORPAY_KEY_ID", default="")
+RAZORPAY_KEY_SECRET = env("RAZORPAY_KEY_SECRET", default="")
+RAZORPAY_WEBHOOK_SECRET = env("RAZORPAY_WEBHOOK_SECRET", default="")
+RAZORPAY_PAYMENTS_ENABLED = env.bool("RAZORPAY_PAYMENTS_ENABLED", default=False)
+
 # Django sessions remain available for the admin site; API clients use JWT.
 CORS_ALLOW_CREDENTIALS = True
 SESSION_COOKIE_HTTPONLY = True
@@ -300,6 +311,7 @@ AUTH_RATE_LIMITS = {
     "otp_confirm_ip": (20, 900),
     "otp_confirm_destination": (10, 900),
 }
+AUTH_TRUST_FORWARDED_CLIENT_IP = False
 
 ACCOUNT_LINK_BASE_URL = env("ACCOUNT_LINK_BASE_URL", default="http://localhost:3000")
 GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")

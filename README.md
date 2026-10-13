@@ -10,7 +10,9 @@ BYdoc is a healthcare discovery and outpatient appointment platform for patients
 | --- | --- |
 | Patient accounts | Registration, password sign-in, one-time codes to a verified email or phone, optional Google sign-in, contact verification, password recovery, and profile editing. Browser API authentication uses short-lived JWT cookies and rotating refresh credentials. |
 | Discovery and booking | Verified doctor and clinic discovery, a nearby clinic map with permission-based location access, live slots, short holds, fee review, and idempotent booking confirmation. PostgreSQL is the source of truth for appointment status. |
+| Consultation payments | Optional Razorpay Route checkout after booking for enabled clinics, with server-verified capture, payment status, and full refunds after cancellation. Pay at clinic remains available. |
 | Role dashboards | Separate patient, doctor, clinic, and platform-admin summaries with role-scoped data. |
+| Provider applications | Doctors and clinic representatives can submit registration details from an email-verified account. Independent admin review creates approved provider records; pending applications stay private. |
 | Support | Guided help for app tasks, support request submission, case references and status, and staff case administration. Optional private AI classifies free-text topics; patients receive reviewed answers. |
 | Backend operations | Organization and clinic records, doctor verification data, notification outbox and inbox, preferences, audit-backed support cases, Celery jobs, and health checks. |
 
@@ -18,7 +20,7 @@ The frontend uses **Next.js**. The API and background jobs use **Django, Django 
 
 ## Quick start (Windows PowerShell)
 
-Prerequisites: Python 3.11, Node.js 22, and Docker Desktop. The commands below start from the repository root, with Docker Desktop running. These are the versions used in CI.
+Prerequisites: Python 3.12, Node.js 22, and Docker Desktop. The commands below start from the repository root, with Docker Desktop running. These are the versions used in CI and the production image.
 
 **Existing installations:** Keep your current `.env`. It preserves the original Compose project name and database identifiers so the BYdoc folder rename does not disconnect existing Docker volumes. New installations use the values in `.env.example`.
 
@@ -66,6 +68,10 @@ See [authentication, OTP, and map setup](docs/otp-jwt-nearby.md) for login flows
 
 Guided help and support requests work without an AI model. To enable local topic classification, follow the [assistant setup](docs/ai-assistant.md). The model never writes a patient-facing answer or performs a booking action.
 
+Online consultation payments are disabled by default. See the [Razorpay Route setup and refund runbook](docs/payments.md) before enabling them. Booking works with pay at clinic while payment credentials and linked clinic accounts are absent.
+
+Doctors and clinics can apply through `/join`. See the [provider onboarding guide](docs/provider-onboarding.md) for verification and review steps. No identity documents are uploaded in this first version.
+
 ## Verify a local change
 
 With PostgreSQL and Redis running, from `backend`:
@@ -85,18 +91,21 @@ npm.cmd run build
 
 GitHub Actions also checks backend translations and the OpenAPI schema, and builds the standalone frontend server. See the [backend](.github/workflows/backend-ci.yml) and [frontend](.github/workflows/frontend-ci.yml) workflows.
 
-The latest local [verification record](docs/verification-2026-10-09.md) lists the full test, container, and HTTP smoke results, plus checks that still need staging provider access.
+Production Python versions are fixed in [`backend/requirements/production.txt`](backend/requirements/production.txt), and the frontend uses `npm ci` from its lockfile. Both CI workflows check for known dependency vulnerabilities.
+
+The latest [deployment preparation record](docs/verification-2026-10-13.md) lists the dependency, test, container, and vulnerability checks, plus the cloud checks still pending. The earlier [feature verification record](docs/verification-2026-10-09.md) includes HTTP smoke results.
 
 ## Deployment readiness
 
-The [AWS deployment design and release runbook](docs/aws-deployment.md) covers proposed infrastructure, secrets, containers, and release checks. Production settings and container images exist, but this repository does not provision AWS infrastructure. **Do not treat a passing build as approval to launch.** Remaining work includes:
+The [Vercel, Render, and Supabase staging runbook](docs/vercel-render-supabase-deployment.md) is the current deployment path. The earlier [AWS deployment design](docs/aws-deployment.md) remains as a reference. Production settings and a container image exist, but no cloud accounts, domain, or deployed environment are configured yet. **Do not treat a passing build as approval to launch.** Remaining work includes:
 
 - Provisioning and testing the production environment, HTTPS, email delivery, monitoring, backup restoration, and incident procedures.
 - Completing clinic receptionist workflows, patient booking management, a full support inbox, and notification screens.
 - Reviewing accessibility and Bengali/Hindi coverage, plus clinical safety testing of the assistant before public healthcare use.
 - Registering and validating the SMS sender and approved templates, configuring a Google web client ID, and choosing a managed map tile service for production traffic.
+- Completing Razorpay merchant and Route onboarding, linked clinic accounts, live webhook delivery, refund and transfer testing, and finance reconciliation before enabling live payments.
 
-PostgreSQL is authoritative for bookings: a selected slot, hold, or sent notification is not a confirmed appointment. BYdoc does not currently provide diagnosis, treatment, emergency care, prescriptions, medical records, or consultation payments. Keep secrets, patient data, verification documents, local mail, virtual environments, and backups out of Git.
+PostgreSQL is authoritative for bookings: a selected slot, hold, or sent notification is not a confirmed appointment. BYdoc does not currently provide diagnosis, treatment, emergency care, prescriptions, or medical records. Keep secrets, patient data, verification documents, local mail, virtual environments, and backups out of Git.
 
 ## Repository and documentation
 
