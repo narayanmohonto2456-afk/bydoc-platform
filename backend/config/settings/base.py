@@ -311,6 +311,7 @@ AUTH_RATE_LIMITS = {
     "otp_confirm_ip": (20, 900),
     "otp_confirm_destination": (10, 900),
 }
+AUTH_TRUST_FORWARDED_CLIENT_IP = False
 
 ACCOUNT_LINK_BASE_URL = env("ACCOUNT_LINK_BASE_URL", default="http://localhost:3000")
 GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")

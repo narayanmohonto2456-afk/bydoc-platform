@@ -136,6 +136,10 @@ STORAGES = {
 if os.environ.get("TRUSTED_PROXY_SSL_HEADER", "False").lower() == "true":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+# Render states that it sets the first X-Forwarded-For address to the real
+# client. Enable only after confirming that behavior on the actual service.
+AUTH_TRUST_FORWARDED_CLIENT_IP = os.environ.get("TRUSTED_PROXY_CLIENT_IP", "False").lower() == "true"
+
 if AI_CHAT_ENABLED:
     OLLAMA_BASE_URL = required("OLLAMA_BASE_URL").rstrip("/")
     model_url = urlsplit(OLLAMA_BASE_URL)

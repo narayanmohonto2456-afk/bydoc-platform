@@ -1,4 +1,5 @@
 """Shared fixed-window authentication limits, with atomic Redis counters."""
+from ipaddress import ip_address
 from time import time
 
 from django.conf import settings
@@ -31,5 +32,12 @@ def consume_limit(scope, identity):
 
 
 def client_address(request):
-    # Ignore spoofable forwarded headers until a trusted proxy is configured.
+    if settings.AUTH_TRUST_FORWARDED_CLIENT_IP:
+        # Only enable when the edge replaces the first entry with the actual
+        # client address. Invalid/missing headers fall back to the proxy IP.
+        candidate = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",", 1)[0].strip()
+        try:
+            return str(ip_address(candidate))
+        except ValueError:
+            pass
     return request.META.get("REMOTE_ADDR") or "unknown"
