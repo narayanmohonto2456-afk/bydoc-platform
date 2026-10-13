@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.12-slim-bookworm AS build
+FROM python:3.12-slim-trixie AS build
 
 ENV VIRTUAL_ENV=/opt/venv \
     PATH=/opt/venv/bin:$PATH \
@@ -7,22 +7,24 @@ ENV VIRTUAL_ENV=/opt/venv \
     PYTHONUNBUFFERED=1
 WORKDIR /app/backend
 RUN python -m venv /opt/venv
-COPY requirements/base.txt requirements/base.txt
-RUN pip install --no-cache-dir -r requirements/base.txt
+COPY requirements/base.txt requirements/production.txt requirements/
+RUN pip install --no-cache-dir -r requirements/production.txt && pip check
 RUN apt-get update && apt-get install --yes --no-install-recommends gettext \
     && rm -rf /var/lib/apt/lists/*
 COPY . .
 RUN DJANGO_SETTINGS_MODULE=config.settings.build python manage.py compilemessages -l bn -l hi \
     && DJANGO_SETTINGS_MODULE=config.settings.build python manage.py collectstatic --noinput
 
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-trixie
 ENV VIRTUAL_ENV=/opt/venv \
     PATH=/opt/venv/bin:$PATH \
     DJANGO_SETTINGS_MODULE=config.settings.production \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 WORKDIR /app/backend
-RUN groupadd --system app && useradd --system --gid app --home-dir /app app
+# Render runtime secret files are readable by group 1000.
+RUN groupadd --system app && groupadd --gid 1000 secrets \
+    && useradd --system --gid app --groups secrets --home-dir /app app
 COPY --from=build /opt/venv /opt/venv
 COPY --from=build --chown=app:app /app/backend /app/backend
 USER app

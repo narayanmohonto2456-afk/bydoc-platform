@@ -20,7 +20,7 @@ The frontend uses **Next.js**. The API and background jobs use **Django, Django 
 
 ## Quick start (Windows PowerShell)
 
-Prerequisites: Python 3.11, Node.js 22, and Docker Desktop. The commands below start from the repository root, with Docker Desktop running. These are the versions used in CI.
+Prerequisites: Python 3.12, Node.js 22, and Docker Desktop. The commands below start from the repository root, with Docker Desktop running. These are the versions used in CI and the production image.
 
 **Existing installations:** Keep your current `.env`. It preserves the original Compose project name and database identifiers so the BYdoc folder rename does not disconnect existing Docker volumes. New installations use the values in `.env.example`.
 
@@ -91,11 +91,13 @@ npm.cmd run build
 
 GitHub Actions also checks backend translations and the OpenAPI schema, and builds the standalone frontend server. See the [backend](.github/workflows/backend-ci.yml) and [frontend](.github/workflows/frontend-ci.yml) workflows.
 
-The latest local [verification record](docs/verification-2026-10-09.md) lists the full test, container, and HTTP smoke results, plus checks that still need staging provider access.
+Production Python versions are fixed in [`backend/requirements/production.txt`](backend/requirements/production.txt), and the frontend uses `npm ci` from its lockfile. Both CI workflows check for known dependency vulnerabilities.
+
+The latest [deployment preparation record](docs/verification-2026-10-13.md) lists the dependency, test, container, and vulnerability checks, plus the cloud checks still pending. The earlier [feature verification record](docs/verification-2026-10-09.md) includes HTTP smoke results.
 
 ## Deployment readiness
 
-The [AWS deployment design and release runbook](docs/aws-deployment.md) covers proposed infrastructure, secrets, containers, and release checks. Production settings and container images exist, but this repository does not provision AWS infrastructure. **Do not treat a passing build as approval to launch.** Remaining work includes:
+The [Vercel, Render, and Supabase staging runbook](docs/vercel-render-supabase-deployment.md) is the current deployment path. The earlier [AWS deployment design](docs/aws-deployment.md) remains as a reference. Production settings and a container image exist, but no cloud accounts, domain, or deployed environment are configured yet. **Do not treat a passing build as approval to launch.** Remaining work includes:
 
 - Provisioning and testing the production environment, HTTPS, email delivery, monitoring, backup restoration, and incident procedures.
 - Completing clinic receptionist workflows, patient booking management, a full support inbox, and notification screens.

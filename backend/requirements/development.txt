@@ -1,6 +1,6 @@
--r base.txt
+-r production.txt
 
-pytest>=8.3,<9.0
+pytest>=9.0.3,<10.0
 pytest-django>=4.10,<5.0
 pytest-cov>=6.0,<7.0
 ruff>=0.11,<1.0
