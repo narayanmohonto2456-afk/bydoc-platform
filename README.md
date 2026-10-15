@@ -95,7 +95,7 @@ GitHub Actions also checks backend translations and the OpenAPI schema, and buil
 
 Production Python versions are fixed in [`backend/requirements/production.txt`](backend/requirements/production.txt), and the frontend uses `npm ci` from its lockfile. Both CI workflows check for known dependency vulnerabilities.
 
-The latest [deployment preparation record](docs/verification-2026-10-13.md) lists the dependency, test, container, and vulnerability checks, plus the cloud checks still pending. The earlier [feature verification record](docs/verification-2026-10-09.md) includes HTTP smoke results.
+The latest [local predeployment verification record](docs/verification-2026-10-15.md) lists the test, dependency, browser, and production settings checks, plus the cloud checks still pending. The earlier [container preparation record](docs/verification-2026-10-13.md) includes image vulnerability results.
 
 ## Deployment readiness
 
