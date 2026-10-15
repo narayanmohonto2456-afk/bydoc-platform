@@ -57,6 +57,7 @@ LOCAL_APPS = [
     "apps.support.apps.SupportConfig",
     "apps.preferences.apps.PreferencesConfig",
     "apps.chatbot.apps.ChatbotConfig",
+    "apps.operations.apps.OperationsConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

@@ -72,7 +72,8 @@ def available_roles(user):
         roles.append("doctor")
     if accessible_clinics(user).exists():
         roles.append("clinic")
-    if user.is_superuser:
+    from apps.operations.permissions import has_any_role
+    if has_any_role(user):
         roles.append("admin")
     return roles
 
@@ -215,7 +216,8 @@ class ClinicDashboardView(DashboardView):
 class AdminDashboardView(DashboardView):
     @extend_schema(responses={200: AdminDashboardSerializer})
     def get(self, request):
-        if not request.user.is_superuser:
+        from apps.operations.permissions import has_any_role
+        if not has_any_role(request.user):
             raise PermissionDenied("Platform administrator access is required.")
         return Response({
             "account_count": User.objects.count(),

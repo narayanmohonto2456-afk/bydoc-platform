@@ -26,7 +26,10 @@ class SupportCaseQuerySet(models.QuerySet):
         if not user or not user.is_authenticated:
             return self.none()
 
-        if user.is_staff or user.is_superuser:
+        from apps.operations.models import StaffGrant
+        from apps.operations.permissions import has_role
+
+        if has_role(user, StaffGrant.Role.SUPPORT):
             return self
 
         return self.filter(requester=user)

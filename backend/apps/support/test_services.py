@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
+from apps.operations.models import StaffGrant
 
 from .models import SupportCase, SupportCaseEvent
 from .services import (
@@ -20,11 +21,14 @@ User = get_user_model()
 
 
 def create_user(username, *, is_staff=False):
-    return User.objects.create_user(
+    user = User.objects.create_user(
         username=username,
         password="test-password",
         is_staff=is_staff,
     )
+    if is_staff:
+        StaffGrant.objects.create(user=user, role=StaffGrant.Role.SUPPORT, granted_by=user)
+    return user
 
 
 def create_open_case(requester):

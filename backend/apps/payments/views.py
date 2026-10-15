@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.appointments.models import Appointment
+from apps.operations.models import WebhookFailure
 
 from . import gateway
 from .models import PaymentIntent, PaymentWebhookEvent
@@ -120,6 +121,16 @@ class RazorpayWebhookView(APIView):
                 elif event_type in {"refund.processed", "refund.failed"}:
                     refund = event["payload"]["refund"]["entity"]
                     record_refund(refund["id"], refund["payment_id"], refund["amount"], refund["status"])
-        except (KeyError, TypeError, ValueError, PaymentError):
+        except (KeyError, TypeError, ValueError, PaymentError) as error:
+            failure, created = WebhookFailure.objects.get_or_create(
+                event_id=event_id, defaults={"event_type": str(locals().get("event_type", ""))[:80],
+                                             "error_code": type(error).__name__},
+            )
+            if not created:
+                failure.error_code = type(error).__name__
+                failure.failed_count += 1
+                failure.resolved = False
+                failure.save(update_fields=["error_code", "failed_count", "resolved", "last_seen_at"])
             return Response(status=400)
+        WebhookFailure.objects.filter(event_id=event_id, resolved=False).update(resolved=True)
         return Response(status=200)

@@ -3,6 +3,7 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient
+from apps.operations.models import StaffGrant
 
 from .models import SupportCase, SupportCaseEvent
 from .services import create_support_case
@@ -14,11 +15,14 @@ User = get_user_model()
 
 
 def create_user(username, *, is_staff=False):
-    return User.objects.create_user(
+    user = User.objects.create_user(
         username=username,
         password="test-password",
         is_staff=is_staff,
     )
+    if is_staff:
+        StaffGrant.objects.create(user=user, role=StaffGrant.Role.SUPPORT, granted_by=user)
+    return user
 
 
 def create_case(requester, subject="Appointment support"):
