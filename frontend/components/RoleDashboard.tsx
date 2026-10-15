@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { administrationUrl, ApiError, apiRequest } from "@/lib/api";
+import { ApiError, apiRequest } from "@/lib/api";
 import { AppointmentPayment } from "@/components/AppointmentPayment";
 
 type Role = "patient" | "doctor" | "clinic" | "admin";
@@ -130,7 +130,7 @@ function ClinicContent({ data, selectedClinicId, onSelectClinic }: { data: Clini
 function AdminContent({ data }: { data: AdminOverview }) {
   return <>
     <div className="dashboard-stats"><Stat value={data.account_count} label="Accounts" /><Stat value={data.doctor_count} label="Doctor profiles" /><Stat value={data.clinic_count} label="Clinics" /><Stat value={data.pending_registrations_count} label="Provider reviews pending" /><Stat value={data.open_support_count} label="Support cases open" /></div>
-    <section className="panel dashboard-section" aria-labelledby="admin-workspace-heading"><span className="eyebrow">Platform operations</span><h2 id="admin-workspace-heading">Administration</h2><p>Review records and permitted actions in the Django administration site.</p><a className="button" href={administrationUrl()}>Open administration</a><p className="dashboard-note">This overview contains aggregate counts. Actions remain protected by Django permissions.</p></section>
+    <section className="panel dashboard-section" aria-labelledby="admin-workspace-heading"><span className="eyebrow">Platform operations</span><h2 id="admin-workspace-heading">Administration</h2><p>Use the queues below to review applications, support cases, payments, appointments, and delivery issues.</p><p className="dashboard-note">Each action requires a role and records a reason.</p></section>
   </>;
 }
 

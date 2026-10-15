@@ -63,7 +63,10 @@ def submit_clinic(user, details):
 
 
 def require_reviewer(application, reviewer, note):
-    if not reviewer.is_superuser or reviewer.pk == application.applicant_id:
+    from apps.operations.models import StaffGrant
+    from apps.operations.permissions import has_role
+
+    if not has_role(reviewer, StaffGrant.Role.PROVIDER) or reviewer.pk == application.applicant_id:
         raise ApplicationError("An independent platform administrator must review this application.")
     if application.status != ApplicationStatus.PENDING:
         raise ApplicationError("This application has already been reviewed.")

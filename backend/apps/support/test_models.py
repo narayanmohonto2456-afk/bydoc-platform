@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
+from apps.operations.models import StaffGrant
 
 from .models import SupportCase, SupportCaseEvent
 
@@ -102,6 +103,7 @@ def test_staff_user_can_view_all_cases():
         password="test-password",
         is_staff=True,
     )
+    StaffGrant.objects.create(user=staff_user, role=StaffGrant.Role.SUPPORT, granted_by=staff_user)
 
     first_case = create_case(first_user)
     second_case = create_case(second_user)

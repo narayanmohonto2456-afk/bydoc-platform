@@ -7,10 +7,12 @@ from rest_framework import (
     status,
 )
 from rest_framework.response import Response
+from rest_framework.permissions import BasePermission
 
 from apps.appointments.models import Appointment
 from apps.clinics.models import Clinic
-
+from apps.operations.models import StaffGrant
+from apps.operations.permissions import has_role
 from .models import SupportCase
 from .limits import limit_support_submission
 from .serializers import (
@@ -34,6 +36,11 @@ from drf_spectacular.utils import extend_schema
 
 
 User = get_user_model()
+
+
+class IsSupportStaff(BasePermission):
+    def has_permission(self, request, view):
+        return has_role(request.user, StaffGrant.Role.SUPPORT)
 
 
 def support_error_response(error):
@@ -292,7 +299,7 @@ class SupportCaseCommentView(
 class StaffSupportCaseAssignView(
     generics.GenericAPIView
 ):
-    permission_classes = (permissions.IsAdminUser,)
+    permission_classes = (IsSupportStaff,)
     serializer_class = StaffAssignSupportCaseSerializer
 
     @extend_schema(
@@ -307,10 +314,10 @@ class StaffSupportCaseAssignView(
         serializer.is_valid(raise_exception=True)
 
         assigned_to = get_object_or_404(
-            User.objects.filter(
-                is_active=True,
-                is_staff=True,
-            ),
+            User.objects.filter(is_active=True).filter(
+                Q(is_superuser=True) | Q(operations_grants__role=StaffGrant.Role.SUPPORT,
+                                           operations_grants__active=True)
+            ).distinct(),
             pk=(
                 serializer.validated_data[
                     "assigned_to_id"
@@ -323,6 +330,7 @@ class StaffSupportCaseAssignView(
                 case_id=case_id,
                 assigned_to=assigned_to,
                 assigned_by=request.user,
+                note=serializer.validated_data["note"],
             )
         except SupportCase.DoesNotExist:
             return Response(
@@ -360,7 +368,7 @@ class StaffSupportCaseAssignView(
 class StaffSupportCaseStatusView(
     generics.GenericAPIView
 ):
-    permission_classes = (permissions.IsAdminUser,)
+    permission_classes = (IsSupportStaff,)
     serializer_class = (
         StaffChangeSupportCaseStatusSerializer
     )

@@ -179,6 +179,7 @@ class StaffAssignSupportCaseSerializer(
     serializers.Serializer
 ):
     assigned_to_id = serializers.UUIDField()
+    note = serializers.CharField(max_length=500, required=False, allow_blank=True, default="")
 
 
 class StaffChangeSupportCaseStatusSerializer(

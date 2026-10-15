@@ -570,9 +570,13 @@ def cancel_appointment(
         ).exists()
     )
 
+    from apps.operations.models import StaffGrant
+    from apps.operations.permissions import has_role
+
     if not (
         is_patient_or_booking_user
         or is_active_clinic_staff
+        or has_role(cancelled_by, StaffGrant.Role.SCHEDULE)
     ):
         raise AppointmentAuthorizationError(
             _("You cannot cancel this appointment.")

@@ -2,6 +2,9 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from apps.operations.models import StaffGrant
+from apps.operations.permissions import has_role
+
 from .models import SupportCase, SupportCaseEvent
 
 
@@ -35,7 +38,7 @@ def _validate_authenticated_user(user, label="user"):
 def _validate_staff_user(user):
     _validate_authenticated_user(user)
 
-    if not user.is_staff and not user.is_superuser:
+    if not has_role(user, StaffGrant.Role.SUPPORT):
         raise SupportCaseAuthorizationError(
             "Support staff permission is required."
         )
@@ -55,7 +58,7 @@ def _normalize_required_text(value, field_name):
 def _validate_case_access(support_case, user):
     _validate_authenticated_user(user)
 
-    if user.is_staff or user.is_superuser:
+    if has_role(user, StaffGrant.Role.SUPPORT):
         return
 
     if support_case.requester_id != user.pk:
@@ -196,6 +199,7 @@ def assign_support_case(
     case_id,
     assigned_to,
     assigned_by,
+    note="",
 ):
     """
     Assign an active case to an authenticated staff member.
@@ -231,7 +235,7 @@ def assign_support_case(
         case=support_case,
         actor=assigned_by,
         event_type=SupportCaseEvent.EventType.ASSIGNED,
-        message="Support case assigned.",
+        message=str(note).strip() or "Support case assigned.",
         metadata={
             "previous_assignee_id": (
                 str(previous_assignee_id)
