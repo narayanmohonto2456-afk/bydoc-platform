@@ -333,8 +333,17 @@ class StaffView(OperationsView):
         if not request.user.is_superuser:
             raise PermissionDenied()
         grants = StaffGrant.objects.select_related("user").order_by("user__username", "role")[:200]
+        search = request.query_params.get("search", "").strip()
+        if len(search) > 100:
+            return Response({"detail": "Search is too long."}, status=400)
+        users = User.objects.none()
+        if len(search) >= 2:
+            users = User.objects.filter(is_active=True, is_superuser=False).filter(
+                Q(username__icontains=search) | Q(email__icontains=search)
+            ).order_by("username")[:20]
         return Response({"results": [{"user_id": item.user_id, "username": item.user.username,
-                                       "role": item.role, "active": item.active} for item in grants]})
+                                       "role": item.role, "active": item.active} for item in grants],
+                         "users": [{"id": user.pk, "username": user.username, "email": user.email} for user in users]})
 
 
 class StaffGrantView(OperationsView):

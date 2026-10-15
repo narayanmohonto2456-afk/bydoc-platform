@@ -1,6 +1,6 @@
 # Admin operations
 
-The `/dashboard/admin` workspace is available to an active superuser or a user with an active `StaffGrant`. Granting `is_staff` alone does not open operational queues or support cases. A superuser assigns and revokes the `provider`, `support`, `finance`, `schedule`, and `delivery` roles from the Staff access tab. Every grant change requires a reason and creates an `OperationsEvent`. Staff grants do not automatically grant Django admin access.
+The `/dashboard/admin` workspace is available to an active superuser or a user with an active `StaffGrant`. Granting `is_staff` alone does not open operational queues or support cases. A superuser finds an account by username or email, then assigns and revokes the `provider`, `support`, `finance`, `schedule`, and `delivery` roles from the Staff access tab. Every grant change requires a reason and creates an `OperationsEvent`. Staff grants do not automatically grant Django admin access.
 
 Run `python manage.py migrate` before opening the workspace. Existing superusers retain all operations roles. Existing non-superuser staff accounts need an explicit grant; the migration does not infer access from `is_staff`.
 
