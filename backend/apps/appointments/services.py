@@ -303,6 +303,8 @@ def book_held_slot(
         patient=patient,
         booked_by=booked_by,
         booking_request_id=booking_request_id,
+        consultation_fee=slot.affiliation.consultation_fee,
+        currency_code=slot.affiliation.currency_code,
         status=Appointment.Status.CONFIRMED,
     )
 

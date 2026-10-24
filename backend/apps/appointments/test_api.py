@@ -333,6 +333,34 @@ def test_authenticated_user_can_hold_book_list_and_cancel():
     assert slot.status == AppointmentSlot.Status.OPEN
 
 
+
+def test_confirmed_booking_keeps_declared_fee_after_affiliation_edit():
+    affiliation = create_affiliation()
+    slot = create_future_slot(affiliation)
+    client = APIClient()
+    client.force_authenticate(user=create_user("fee-snapshot-patient"))
+
+    hold = client.post(
+        reverse("appointments:slot-hold", kwargs={"slot_id": slot.pk}), {}, format="json"
+    )
+    booking = client.post(
+        reverse("appointments:slot-book", kwargs={"slot_id": slot.pk}),
+        {
+            "hold_token": hold.data["hold_token"],
+            "booking_request_id": "b4845ff8-9011-4c5f-a09f-c2cad0d83264",
+        },
+        format="json",
+    )
+    assert booking.status_code == 200
+    assert booking.data["consultation_fee"] == "500.00"
+
+    affiliation.consultation_fee = "700.00"
+    affiliation.save(update_fields=["consultation_fee"])
+    listed = client.get(reverse("appointments:my-appointments"))
+    assert response_items(listed)[0]["consultation_fee"] == "500.00"
+
+
+
 def test_unrelated_user_cannot_view_or_cancel_appointment():
     affiliation = create_affiliation()
     slot = create_future_slot(affiliation)

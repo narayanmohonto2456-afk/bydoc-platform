@@ -144,18 +144,12 @@ class AppointmentSerializer(serializers.ModelSerializer):
         read_only=True,
     )
     consultation_fee = serializers.DecimalField(
-        source=(
-            "slot.affiliation.consultation_fee"
-        ),
         max_digits=10,
         decimal_places=2,
         read_only=True,
         allow_null=True,
     )
-    currency_code = serializers.CharField(
-        source="slot.affiliation.currency_code",
-        read_only=True,
-    )
+    currency_code = serializers.CharField(read_only=True)
 
     class Meta:
         model = Appointment
