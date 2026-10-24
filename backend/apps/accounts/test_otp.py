@@ -84,7 +84,7 @@ def test_sms_requires_phone_verification_then_allows_login():
     )
     client, csrf = browser()
     client.force_login(user)
-    requested = client.post("/api/v1/auth/phone/verify/request/", {}, format="json", HTTP_X_CSRFTOKEN=csrf)
+    requested = client.post("/api/v1/auth/phone/verify/request/", {"current_password": "strong-test-password-123"}, format="json", HTTP_X_CSRFTOKEN=csrf)
     assert requested.status_code == 202
     challenge = OtpChallenge.objects.get(user=user, purpose="verify_phone")
     with patch("apps.accounts.otp.boto3.client") as sms_client:
@@ -94,6 +94,7 @@ def test_sms_requires_phone_verification_then_allows_login():
     assert options["DestinationCountryParameters"]["IN_TEMPLATE_ID"] == "verify-test"
     confirmed = client.post("/api/v1/auth/phone/verify/confirm/", {
         "code": code_for(challenge),
+        "current_password": "strong-test-password-123",
     }, format="json", HTTP_X_CSRFTOKEN=csrf)
     assert confirmed.status_code == 204
     assert VerifiedPhone.objects.filter(user=user, number=user.phone_number).exists()

@@ -4,6 +4,10 @@ BYdoc offers password sign-in, a one-time code to a verified email, and a one-ti
 
 ## Browser authentication
 
+SMS enrollment requires the current password when requesting and confirming a phone-verification code. Both requests accept `current_password`; confirmation also accepts `code`. Accounts created through Google can set a password using their verified recovery email before enabling SMS sign-in. A session alone cannot enroll a new login factor. Django admin login uses the same shared IP/account counters as API password login and fails closed when the counter store is unavailable.
+
+Completing a password reset or email verification invalidates the user's outstanding recovery links, OTP challenges, and JWT sessions. The user must sign in again. A password reset link must still belong to the account's current verified email.
+
 The API sets an HttpOnly access JWT cookie (10 minutes) and an opaque rotating refresh cookie (30 days). The frontend refreshes on an expired access credential, then retries the request. Logout revokes the stored refresh session. Password changes invalidate credentials through the account authentication hash. Cookie-based unsafe requests require a CSRF token. Production cookies use Secure and `__Host-` names; Django admin keeps its separate staff session. The API also accepts a Bearer access JWT where a client already has one, but this release does not expose a mobile token issuance flow.
 
 The sign-in routes live under `/api/v1/auth/`: `login/`, `google/`, `otp/status/`, `otp/request/`, `otp/confirm/`, `token/refresh/`, and `logout/`. Phone verification uses `phone/status/`, `phone/verify/request/`, and `phone/verify/confirm/`. OTP requests return a generic response for unknown contacts. Codes expire after 10 minutes, are single-use, allow five attempts, and are queued for Celery delivery. Start both the worker and Beat as shown in the README.

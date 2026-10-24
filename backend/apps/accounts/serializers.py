@@ -117,7 +117,11 @@ class OtpConfirmSerializer(OtpLoginSerializer):
     code = serializers.RegexField(regex=r"^[0-9]{6}$", trim_whitespace=False)
 
 
-class PhoneCodeSerializer(StrictFieldsMixin, serializers.Serializer):
+class PhoneVerificationRequestSerializer(StrictFieldsMixin, serializers.Serializer):
+    current_password = serializers.CharField(write_only=True, trim_whitespace=False, max_length=128)
+
+
+class PhoneCodeSerializer(PhoneVerificationRequestSerializer):
     code = serializers.RegexField(regex=r"^[0-9]{6}$", trim_whitespace=False)
 
 

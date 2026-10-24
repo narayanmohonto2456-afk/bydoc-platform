@@ -14,7 +14,7 @@ from .serializers import (
     AccountSerializer, AuthErrorSerializer, CsrfTokenSerializer,
     LoginResponseSerializer, LoginSerializer, RegistrationSerializer,
     GoogleCredentialSerializer, GoogleStatusSerializer,
-    OtpLoginSerializer, OtpConfirmSerializer, OtpAvailabilitySerializer, PhoneCodeSerializer, PhoneStatusSerializer,
+    OtpLoginSerializer, OtpConfirmSerializer, OtpAvailabilitySerializer, PhoneCodeSerializer, PhoneStatusSerializer, PhoneVerificationRequestSerializer,
     VerifyRequestSerializer, ResetRequestSerializer, TokenSerializer, ResetConfirmSerializer,
         PatientProfileSerializer,
 )
@@ -245,18 +245,25 @@ class PhoneVerificationStatusView(AccountAPIView):
 
 class PhoneVerificationRequestView(AccountAPIView):
     permission_classes = (permissions.IsAuthenticated,)
-    serializer_class = PhoneStatusSerializer
+    serializer_class = PhoneVerificationRequestSerializer
 
-    @extend_schema(request=None, responses={202: None})
+    @extend_schema(responses={202: None})
+    @transaction.atomic
     def post(self, request):
         if not sms_ready():
             raise SmsUnavailable()
-        number = request.user.phone_number
+        consume_limit("otp_request_ip", client_address(request))
+        consume_limit("login_account", f"phone-enrollment:{request.user.pk}")
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = get_user_model().objects.select_for_update().get(pk=request.user.pk)
+        if not user.check_password(serializer.validated_data["current_password"]):
+            return Response({"detail": "Current password is incorrect."}, status=400)
+        number = user.phone_number
         if not number:
             return Response({"phone_number": ["Add a phone number to your profile first."]}, status=400)
-        consume_limit("otp_request_ip", client_address(request))
         consume_limit("otp_destination", f"verify:{number}")
-        create_challenge(request.user, OtpChallenge.Purpose.VERIFY_PHONE,
+        create_challenge(user, OtpChallenge.Purpose.VERIFY_PHONE,
                          OtpChallenge.Channel.SMS, number)
         return Response(status=202)
 
@@ -268,9 +275,10 @@ class PhoneVerificationConfirmView(AccountAPIView):
     @extend_schema(responses={204: None})
     def post(self, request):
         consume_limit("otp_confirm_ip", client_address(request))
+        consume_limit("login_account", f"phone-enrollment:{request.user.pk}")
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        confirm_phone(request.user, serializer.validated_data["code"])
+        confirm_phone(request.user, serializer.validated_data["code"], serializer.validated_data["current_password"])
         return Response(status=204)
 
 

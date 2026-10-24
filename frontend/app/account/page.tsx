@@ -29,6 +29,7 @@ export default function AccountPage() {
   const [googleStatusError, setGoogleStatusError] = useState("");
   const [phoneStatus, setPhoneStatus] = useState<PhoneStatus | null>(null);
   const [phoneCode, setPhoneCode] = useState("");
+  const [phonePassword, setPhonePassword] = useState("");
   const [phoneCodeRequested, setPhoneCodeRequested] = useState(false);
   const [phoneBusy, setPhoneBusy] = useState(false);
   const [phoneError, setPhoneError] = useState("");
@@ -67,6 +68,7 @@ export default function AccountPage() {
       setSavedProfile(saved);
       setProfileSaved(true);
       setPhoneCodeRequested(false);
+      setPhonePassword("");
       setPhoneStatus(current => current ? { ...current, verified: current.verified && saved.phone_number === savedProfile?.phone_number } : current);
       await refresh();
     } catch (cause) {
@@ -106,7 +108,7 @@ export default function AccountPage() {
     setPhoneBusy(true);
     setPhoneError("");
     try {
-      await postJson("/auth/phone/verify/request/", {});
+      await postJson("/auth/phone/verify/request/", { current_password: phonePassword });
       setPhoneCodeRequested(true);
     } catch (cause) {
       setPhoneError(cause instanceof Error ? cause.message : "Could not send phone code.");
@@ -120,10 +122,11 @@ export default function AccountPage() {
     setPhoneBusy(true);
     setPhoneError("");
     try {
-      await postJson("/auth/phone/verify/confirm/", { code: phoneCode });
+      await postJson("/auth/phone/verify/confirm/", { code: phoneCode, current_password: phonePassword });
       setPhoneStatus(current => current ? { ...current, verified: true } : current);
       setPhoneCodeRequested(false);
       setPhoneCode("");
+      setPhonePassword("");
     } catch (cause) {
       setPhoneError(cause instanceof Error ? cause.message : "Could not verify phone.");
     } finally {
@@ -170,7 +173,8 @@ export default function AccountPage() {
         <p>Verify the phone number saved in your profile before using SMS sign-in.</p>
         {phoneError && <div className="message message-error" role="alert">{phoneError}</div>}
         {!phoneStatus && !phoneError && <p role="status">Loading phone status…</p>}
-        {phoneStatus?.verified ? <p className="message message-success" role="status">Your phone number is verified.</p> : phoneStatus && !phoneStatus.sms_available ? <p>SMS delivery is not configured yet. Email code sign-in remains available for verified email addresses.</p> : phoneStatus && !savedProfile?.phone_number ? <p>Add and save a phone number above first.</p> : phoneStatus && <>
+        {phoneStatus?.verified ? <p className="message message-success" role="status">Your phone number is verified.</p> : phoneStatus && !phoneStatus.sms_available ? <p>SMS delivery is not configured yet. Email code sign-in remains available for verified email addresses.</p> : phoneStatus && !savedProfile?.phone_number ? <p>Add and save a phone number above first.</p> : googleStatus?.has_password === false ? <p>Before enabling SMS sign-in, <Link href="/forgot-password">set a password using your verified email</Link>. Your current password protects changes to your sign-in methods.</p> : phoneStatus && <>
+          <PasswordField id="phone-current-password" label="Current password" autoComplete="current-password" value={phonePassword} onChange={setPhonePassword} />
           {!phoneCodeRequested ? <button className="button" type="button" disabled={phoneBusy || profileDirty} onClick={requestPhoneCode}>{phoneBusy ? "Sending…" : "Send verification code"}</button> : <form onSubmit={confirmPhoneCode}>
             <div className="field"><label htmlFor="phone-code">Six-digit SMS code</label><input id="phone-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={phoneCode} onChange={event => setPhoneCode(event.target.value.replace(/\D/g, ""))} /></div>
             <div className="form-actions"><button className="button" disabled={phoneBusy}>{phoneBusy ? "Checking…" : "Verify phone"}</button><button className="button button-secondary" type="button" disabled={phoneBusy} onClick={requestPhoneCode}>Send new code</button></div>
