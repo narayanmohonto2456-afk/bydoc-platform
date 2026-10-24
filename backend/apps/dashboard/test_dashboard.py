@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.appointments.models import Appointment, AppointmentSlot
 from apps.clinics.models import Clinic
 from apps.doctors.models import DoctorClinicAffiliation, DoctorProfile
-from apps.organizations.models import Organization, OrganizationMembership
+from apps.organizations.models import ClinicStaffAssignment, Organization, OrganizationMembership
 
 
 def make_user(django_user_model, name):
@@ -110,6 +110,7 @@ def test_clinic_dashboard_is_scoped_to_active_membership(client, django_user_mod
     org_a, clinic_a = make_clinic("Alpha Clinic")
     org_b, clinic_b = make_clinic("Beta Clinic")
     membership = make_membership(staff, org_a)
+    ClinicStaffAssignment.objects.create(membership=membership, clinic=clinic_a)
     own = make_appointment(patient, clinic_a)
     make_appointment(patient, clinic_b)
     client.force_login(staff)
@@ -121,6 +122,7 @@ def test_clinic_dashboard_is_scoped_to_active_membership(client, django_user_mod
     assert len(response.json()["clinics"]) == 1
     assert client.get(f"/api/v1/dashboard/clinic/?clinic_id={clinic_b.id}").status_code == 404
     second_membership = make_membership(staff, org_b)
+    ClinicStaffAssignment.objects.create(membership=second_membership, clinic=clinic_b)
     selected = client.get(f"/api/v1/dashboard/clinic/?clinic_id={clinic_b.id}")
     assert selected.status_code == 200
     assert selected.json()["today_count"] == 1
@@ -172,3 +174,28 @@ def test_receptionist_cannot_see_all_locations_in_clinic_group(client, django_us
     response = client.get("/api/v1/dashboard/clinic/")
     assert response.status_code == 200
     assert len(response.json()["clinics"]) == 2
+
+
+@pytest.mark.django_db
+def test_receptionist_assignment_limits_multi_clinic_dashboard(client, django_user_model):
+    receptionist = make_user(django_user_model, "assigned-receptionist")
+    organization, clinic_a = make_clinic("Assigned Group")
+    clinic_b = Clinic.objects.create(
+        organization=organization, name="Other Location", slug="other",
+        status=Clinic.Status.ACTIVE, address_line_1="2 Main Road",
+        locality="Centre", district="Kolkata", state="West Bengal",
+        postal_code="700002", timezone="UTC",
+    )
+    membership = make_membership(receptionist, organization)
+    assignment = ClinicStaffAssignment.objects.create(membership=membership, clinic=clinic_a)
+    client.force_login(receptionist)
+
+    response = client.get("/api/v1/dashboard/clinic/")
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()["clinics"]] == [str(clinic_a.id)]
+    assert client.get(f"/api/v1/dashboard/clinic/?clinic_id={clinic_b.id}").status_code == 404
+
+    assignment.is_active = False
+    assignment.save(update_fields=["is_active"])
+    assert client.get("/api/v1/dashboard/roles/").json()["roles"] == ["patient"]
+    assert client.get("/api/v1/dashboard/clinic/").status_code == 403

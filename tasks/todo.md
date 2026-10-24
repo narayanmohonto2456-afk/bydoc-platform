@@ -31,8 +31,8 @@ All boxes are open. Complete a task only after its acceptance criteria and verif
 ### Task 3: Scope clinic staff to assigned clinics
 **Description:** Add explicit clinic assignments for receptionists while owners and managers retain organization-wide access. Centralize the authorization check for schedule and booking operations.
 **Acceptance criteria:**
-- [ ] A receptionist assigned to Clinic A cannot read or change Clinic B data in the same organization.
-- [ ] Suspended or revoked membership/assignment immediately loses access.
+- [x] A receptionist assigned to Clinic A cannot read or change Clinic B data in the same organization.
+- [x] Suspended or revoked membership/assignment immediately loses access.
 **Verification:** Organization and dashboard permission tests for allowed and denied clinics.
 **Dependencies:** None.
 **Files likely touched:** backend/apps/organizations/models.py, a new organizations migration, backend/apps/organizations/permissions.py, backend/apps/organizations/tests.py, backend/apps/dashboard/views.py.

@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
@@ -241,3 +242,38 @@ class OrganizationMembership(models.Model):
             f"{self.user} — "
             f"{self.organization} ({self.role})"
         )
+
+class ClinicStaffAssignment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    membership = models.ForeignKey(
+        OrganizationMembership, on_delete=models.PROTECT, related_name="clinic_assignments",
+    )
+    clinic = models.ForeignKey(
+        "clinics.Clinic", on_delete=models.PROTECT, related_name="staff_assignments",
+    )
+    is_active = models.BooleanField(default=True)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+        null=True, blank=True, related_name="clinic_assignments_made",
+    )
+    reason = models.CharField(max_length=250, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "organizations_clinic_staff_assignment"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["membership", "clinic"], name="unique_membership_clinic_assignment",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["clinic", "is_active"], name="clinic_staff_active_idx"),
+        ]
+
+    def clean(self):
+        if self.membership_id and self.clinic_id:
+            if self.membership.organization_id != self.clinic.organization_id:
+                raise ValidationError("The clinic must belong to the membership organization.")
+            if self.membership.role != OrganizationMembership.Role.RECEPTIONIST:
+                raise ValidationError("Only receptionist memberships need clinic assignments.")

@@ -1,6 +1,7 @@
+from django import forms
 from django.contrib import admin
 
-from .models import Organization, OrganizationMembership
+from .models import ClinicStaffAssignment, Organization, OrganizationMembership
 
 
 @admin.register(Organization)
@@ -65,3 +66,41 @@ class OrganizationMembershipAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     )
+
+class ClinicStaffAssignmentForm(forms.ModelForm):
+    reason = forms.CharField(max_length=250)
+
+    class Meta:
+        model = ClinicStaffAssignment
+        fields = ("membership", "clinic", "is_active", "reason")
+
+
+@admin.register(ClinicStaffAssignment)
+class ClinicStaffAssignmentAdmin(admin.ModelAdmin):
+    form = ClinicStaffAssignmentForm
+    list_display = ("membership", "clinic", "is_active", "assigned_by", "updated_at")
+    list_filter = ("is_active", "clinic")
+    search_fields = (
+        "membership__user__username", "membership__user__email", "clinic__name",
+    )
+    autocomplete_fields = ("membership", "clinic")
+    readonly_fields = ("id", "assigned_by", "created_at", "updated_at")
+
+    def has_module_permission(self, request):
+        return request.user.is_superuser
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def save_model(self, request, obj, form, change):
+        obj.assigned_by = request.user
+        super().save_model(request, obj, form, change)
