@@ -389,9 +389,9 @@ def generate_slots_for_date(affiliation, target_date):
     """
     Generate slots for one doctor-clinic affiliation and local date.
 
-    Existing slots are preserved. The database uniqueness constraint
-    prevents duplicate slots when generation runs more than once.
+    Keep bookings and manual blocks while reconciling future schedule blocks.
     """
+    affiliation = DoctorClinicAffiliation.objects.select_for_update().get(pk=affiliation.pk)
     if (
         affiliation.status
         != DoctorClinicAffiliation.Status.ACTIVE
@@ -431,11 +431,10 @@ def generate_slots_for_date(affiliation, target_date):
         )
     )
 
-    if any(
+    is_closed = any(
         item.exception_type == ScheduleException.Type.CLOSED
         for item in exceptions
-    ):
-        return AppointmentSlot.objects.none()
+    )
 
     custom_windows = [
         (item.start_time, item.end_time)
@@ -446,7 +445,9 @@ def generate_slots_for_date(affiliation, target_date):
         )
     ]
 
-    if custom_windows:
+    if is_closed:
+        availability_windows = []
+    elif custom_windows:
         availability_windows = custom_windows
     else:
         rules = AvailabilityRule.objects.filter(
@@ -536,11 +537,34 @@ def generate_slots_for_date(affiliation, target_date):
     )
     local_next_day = local_day_start + timedelta(days=1)
 
-    return AppointmentSlot.objects.filter(
+    day_slots = AppointmentSlot.objects.filter(
         affiliation=affiliation,
         starts_at__gte=local_day_start,
         starts_at__lt=local_next_day,
-    ).order_by("starts_at")
+    )
+    changed = []
+    for slot in day_slots.select_for_update().order_by("starts_at"):
+        if slot.starts_at <= now or slot.status == AppointmentSlot.Status.BOOKED:
+            continue
+        if slot.status == AppointmentSlot.Status.BLOCKED and not slot.schedule_blocked:
+            continue
+        candidate = candidate_slots.get(slot.starts_at)
+        allowed = candidate is not None and candidate.ends_at == slot.ends_at
+        if allowed and not slot.schedule_blocked:
+            continue
+        if not allowed and slot.schedule_blocked:
+            continue
+        slot.status = AppointmentSlot.Status.OPEN if allowed else AppointmentSlot.Status.BLOCKED
+        slot.schedule_blocked = not allowed
+        slot.held_by = None
+        slot.hold_token = None
+        slot.hold_expires_at = None
+        slot.updated_at = now
+        changed.append(slot)
+    AppointmentSlot.objects.bulk_update(
+        changed, ["status", "schedule_blocked", "held_by", "hold_token", "hold_expires_at", "updated_at"],
+    )
+    return day_slots.order_by("starts_at")
 
 
 class AppointmentAuthorizationError(AppointmentBookingError):

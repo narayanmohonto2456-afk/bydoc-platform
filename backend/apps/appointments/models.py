@@ -173,6 +173,7 @@ class AppointmentSlot(models.Model):
     )
     hold_token = models.UUIDField(unique=True, blank=True, null=True)
     hold_expires_at = models.DateTimeField(blank=True, null=True)
+    schedule_blocked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

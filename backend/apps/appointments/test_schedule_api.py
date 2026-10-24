@@ -138,3 +138,33 @@ def test_clinic_staff_can_block_open_slot_but_not_booked_slot():
     assert booked_response.status_code == 409
     booked.refresh_from_db()
     assert booked.status == AppointmentSlot.Status.BOOKED
+
+
+def test_manual_block_survives_reopening_a_schedule():
+    from .services import generate_slots_for_date
+    from .tests import create_availability_rule, future_clinic_date
+
+    affiliation = create_affiliation()
+    target_date = future_clinic_date()
+    create_availability_rule(affiliation, target_date)
+    slots = list(generate_slots_for_date(affiliation, target_date))
+    closure = ScheduleException.objects.create(
+        affiliation=affiliation, exception_date=target_date,
+        exception_type=ScheduleException.Type.CLOSED,
+    )
+    generate_slots_for_date(affiliation, target_date)
+    manager = manager_client(affiliation)
+    response = manager.post(
+        f"/api/v1/appointments/clinics/{affiliation.clinic_id}/schedule/slots/{slots[0].pk}/block/",
+        {"reason": "Equipment remains unavailable"}, format="json",
+    )
+    assert response.status_code == 200
+    closure.delete()
+
+    generate_slots_for_date(affiliation, target_date)
+
+    slots[0].refresh_from_db()
+    slots[1].refresh_from_db()
+    assert slots[0].status == AppointmentSlot.Status.BLOCKED
+    assert slots[0].schedule_blocked is False
+    assert slots[1].status == AppointmentSlot.Status.OPEN

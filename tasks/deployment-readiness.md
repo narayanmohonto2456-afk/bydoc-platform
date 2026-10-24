@@ -6,7 +6,7 @@ Target: Vercel frontend, Render API and Celery services, Supabase PostgreSQL.
 - [x] Invalidate issued OTP challenges on password reset.
 - [x] Require an existing factor before enrolling an SMS sign-in number.
 - [x] Apply shared authentication throttles to Django admin login.
-- [ ] Reconcile closed/reopened schedules without deleting bookings or reopening manual blocks.
+- [x] Reconcile closed/reopened schedules without deleting bookings or reopening manual blocks.
 - [ ] Pass backend tests, schema and migration checks; frontend tests, typecheck and build.
 - [ ] Review dependencies and production deployment configuration.
 - [ ] Verify GitHub CI for the delivery branch.

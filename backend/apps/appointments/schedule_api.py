@@ -208,12 +208,16 @@ class ClinicScheduleExceptionsView(ClinicScheduleRulesView):
             affiliation=affiliation,
             starts_at__gte=start,
             starts_at__lt=end,
-            status=AppointmentSlot.Status.OPEN,
+            status__in=[AppointmentSlot.Status.OPEN, AppointmentSlot.Status.HELD],
         )
         for slot in open_slots:
             if slot_conflicts_with_exceptions(slot, zone, exceptions):
                 slot.status = AppointmentSlot.Status.BLOCKED
-                slot.save(update_fields=["status", "updated_at"])
+                slot.schedule_blocked = True
+                slot.held_by = None
+                slot.hold_token = None
+                slot.hold_expires_at = None
+                slot.save(update_fields=["status", "schedule_blocked", "held_by", "hold_token", "hold_expires_at", "updated_at"])
         clinic.schedule_updated_at = timezone.now()
         clinic.save(update_fields=["schedule_updated_at", "updated_at"])
         OperationsEvent.objects.create(
@@ -249,15 +253,16 @@ class ClinicSlotBlockView(ClinicScheduleRulesView):
             pk=slot_id,
             affiliation__clinic=clinic,
         )
-        if slot.status == AppointmentSlot.Status.BLOCKED:
+        if slot.status == AppointmentSlot.Status.BLOCKED and not slot.schedule_blocked:
             return Response({"slot_id": str(slot.pk), "status": slot.status})
-        if slot.status != AppointmentSlot.Status.OPEN:
+        if slot.status not in (AppointmentSlot.Status.OPEN, AppointmentSlot.Status.BLOCKED):
             return Response(
                 {"detail": "Only an open slot can be blocked."},
                 status=status.HTTP_409_CONFLICT,
             )
         slot.status = AppointmentSlot.Status.BLOCKED
-        slot.save(update_fields=["status", "updated_at"])
+        slot.schedule_blocked = False
+        slot.save(update_fields=["status", "schedule_blocked", "updated_at"])
         Clinic.objects.filter(pk=clinic.pk).update(schedule_updated_at=timezone.now())
         OperationsEvent.objects.create(
             actor=request.user,
