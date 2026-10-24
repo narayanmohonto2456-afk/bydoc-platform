@@ -69,6 +69,56 @@ def test_order_is_patient_scoped_idempotent_and_uses_clinic_route():
 
 
 @override_settings(**PAYMENT_SETTINGS)
+def test_order_uses_booked_fee_after_affiliation_fee_changes():
+    client, appointment, affiliation = booked_appointment()
+    affiliation.consultation_fee = "700.00"
+    affiliation.save(update_fields=["consultation_fee"])
+
+    with patch("apps.payments.gateway.create_order", return_value=order_response()) as create:
+        response = client.post(
+            reverse("payments:order", kwargs={"appointment_id": appointment.pk}),
+            {},
+            format="json",
+        )
+
+    assert response.status_code == 200
+    assert response.data["amount_paise"] == 50000
+    create.assert_called_once_with(50000, "acc_clinic123", str(appointment.booking_reference))
+
+
+@override_settings(**PAYMENT_SETTINGS)
+def test_historical_booking_without_fee_snapshot_cannot_start_new_charge():
+    client, appointment, _ = booked_appointment()
+    appointment.consultation_fee = None
+    appointment.currency_code = ""
+    appointment.save(update_fields=["consultation_fee", "currency_code"])
+
+    with patch("apps.payments.gateway.create_order") as create:
+        response = client.post(
+            reverse("payments:order", kwargs={"appointment_id": appointment.pk}),
+            {},
+            format="json",
+        )
+    assert response.status_code == 409
+    create.assert_not_called()
+
+
+@override_settings(**PAYMENT_SETTINGS)
+def test_existing_order_survives_missing_historical_fee_snapshot():
+    client, appointment, _ = booked_appointment()
+    url = reverse("payments:order", kwargs={"appointment_id": appointment.pk})
+    with patch("apps.payments.gateway.create_order", return_value=order_response()) as create:
+        first = client.post(url, {}, format="json")
+        appointment.consultation_fee = None
+        appointment.currency_code = ""
+        appointment.save(update_fields=["consultation_fee", "currency_code"])
+        repeated = client.post(url, {}, format="json")
+    assert first.status_code == repeated.status_code == 200
+    assert repeated.data["order_id"] == first.data["order_id"]
+    create.assert_called_once()
+
+
+@override_settings(**PAYMENT_SETTINGS)
 def test_verified_capture_and_full_refund_on_cancellation():
     client, appointment, _ = booked_appointment()
     with patch("apps.payments.gateway.create_order", return_value=order_response()):
