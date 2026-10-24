@@ -90,7 +90,11 @@ class PatientDashboardView(DashboardView):
             slot__starts_at__gte=now,
             status__in=[Appointment.Status.CONFIRMED, Appointment.Status.CHECKED_IN],
         )
-        recent = appointments.select_related(
+        next_visit = upcoming.select_related(
+            "slot__affiliation__doctor", "slot__affiliation__clinic",
+        ).order_by("slot__starts_at").first()
+        other_appointments = appointments.exclude(pk=next_visit.pk) if next_visit else appointments
+        recent = other_appointments.select_related(
             "slot__affiliation__doctor", "slot__affiliation__clinic",
         ).order_by("-slot__starts_at")[:6]
         return Response({
@@ -98,6 +102,7 @@ class PatientDashboardView(DashboardView):
             "open_support_count": SupportCase.objects.filter(requester=request.user).exclude(
                 status__in=[SupportCase.Status.RESOLVED, SupportCase.Status.CLOSED],
             ).count(),
+            "next_appointment": appointment_card(next_visit) if next_visit else None,
             "appointments": [appointment_card(item) for item in recent],
             "updated_at": now,
         })

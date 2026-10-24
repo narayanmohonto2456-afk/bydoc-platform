@@ -84,10 +84,60 @@ def test_patient_sees_only_own_appointments(client, django_user_model):
     }
     response = client.get("/api/v1/dashboard/patient/")
     assert response.status_code == 200
-    assert [item["id"] for item in response.json()["appointments"]] == [str(own.id)]
+    visible = response.json()["appointments"]
+    if response.json()["next_appointment"]:
+        visible = [response.json()["next_appointment"], *visible]
+    assert [item["id"] for item in visible] == [str(own.id)]
     assert client.get("/api/v1/dashboard/doctor/").status_code == 403
     assert client.get("/api/v1/dashboard/clinic/").status_code == 403
     assert client.get("/api/v1/dashboard/admin/").status_code == 403
+
+
+@pytest.mark.django_db
+def test_patient_dashboard_has_no_next_visit_when_empty(client, django_user_model):
+    client.force_login(make_user(django_user_model, "patient-empty"))
+    response = client.get("/api/v1/dashboard/patient/")
+    assert response.status_code == 200
+    assert response.json()["next_appointment"] is None
+    assert response.json()["appointments"] == []
+    assert response.json()["upcoming_count"] == 0
+
+
+@pytest.mark.django_db
+def test_patient_next_visit_is_earliest_active_booking_even_beyond_recent_six(client, django_user_model):
+    patient = make_user(django_user_model, "patient-next")
+    _, clinic = make_clinic("Next Clinic")
+    next_visit = make_appointment(patient, clinic)
+    next_visit.slot.starts_at = timezone.now() + timedelta(days=1)
+    next_visit.slot.ends_at = next_visit.slot.starts_at + timedelta(minutes=15)
+    next_visit.slot.save(update_fields=["starts_at", "ends_at"])
+    for day in range(2, 9):
+        starts_at = timezone.now() + timedelta(days=day)
+        slot = AppointmentSlot.objects.create(
+            affiliation=next_visit.slot.affiliation,
+            starts_at=starts_at,
+            ends_at=starts_at + timedelta(minutes=15),
+            status=AppointmentSlot.Status.BOOKED,
+        )
+        Appointment.objects.create(slot=slot, patient=patient, booked_by=patient)
+    cancelled_start = timezone.now() + timedelta(hours=12)
+    cancelled_slot = AppointmentSlot.objects.create(
+        affiliation=next_visit.slot.affiliation,
+        starts_at=cancelled_start,
+        ends_at=cancelled_start + timedelta(minutes=15),
+        status=AppointmentSlot.Status.BOOKED,
+    )
+    Appointment.objects.create(
+        slot=cancelled_slot, patient=patient, booked_by=patient,
+        status=Appointment.Status.CANCELLED, cancelled_at=timezone.now(), cancelled_by=patient,
+    )
+
+    client.force_login(patient)
+    data = client.get("/api/v1/dashboard/patient/").json()
+    assert data["upcoming_count"] == 8
+    assert data["next_appointment"]["id"] == str(next_visit.id)
+    assert len(data["appointments"]) == 6
+    assert str(next_visit.id) not in {item["id"] for item in data["appointments"]}
 
 
 @pytest.mark.django_db

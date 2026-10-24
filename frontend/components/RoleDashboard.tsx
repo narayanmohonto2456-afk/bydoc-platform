@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { ApiError, apiRequest } from "@/lib/api";
-import { AppointmentPayment } from "@/components/AppointmentPayment";
+import { PatientDashboardContent, type PatientOverview } from "@/components/PatientDashboardContent";
 
 type Role = "patient" | "doctor" | "clinic" | "admin";
 type RolesResponse = { roles: Role[]; preferred: Role };
@@ -15,12 +15,6 @@ type Appointment = {
   status: string;
   doctor_name: string;
   clinic_name: string;
-};
-type PatientOverview = {
-  upcoming_count: number;
-  open_support_count: number;
-  appointments: Appointment[];
-  updated_at: string;
 };
 type DoctorOverview = {
   display_name: string;
@@ -87,20 +81,8 @@ function AppointmentList({ appointments, clinicView = false, timeZone }: { appoi
       <div className="dashboard-appointment-time"><strong>{dateTime(item.starts_at, timeZone)}</strong><span>Booking {item.booking_reference}</span></div>
       <div className="dashboard-appointment-person"><strong>{clinicView ? item.patient_name : item.doctor_name}</strong><span>{clinicView ? item.doctor_name : item.clinic_name}</span></div>
       <span className={`dashboard-status dashboard-status-${item.status}`}>{statusLabel(item.status)}</span>
-      {!clinicView && <AppointmentPayment appointmentId={item.id} />}
     </li>)}
   </ol>;
-}
-
-function PatientContent({ data }: { data: PatientOverview }) {
-  return <>
-    <div className="dashboard-stats"><Stat value={data.upcoming_count} label="Upcoming visits" /><Stat value={data.open_support_count} label="Support cases in progress" /></div>
-    <section className="panel dashboard-section" aria-labelledby="patient-appointments-heading">
-      <div className="dashboard-section-heading"><div><span className="eyebrow">Your care journey</span><h2 id="patient-appointments-heading">Appointments</h2></div><Link className="button" href="/appointments">Find a doctor</Link></div>
-      <AppointmentList appointments={data.appointments} />
-      <p className="dashboard-note">Appointment status shown here comes from your booking record. <Link href="/account">Update account settings</Link>.</p>
-    </section>
-  </>;
 }
 
 function DoctorContent({ data }: { data: DoctorOverview }) {
@@ -168,11 +150,11 @@ export function RoleDashboard({ role }: { role: Role }) {
   const error = failure?.key === key ? failure.message : "";
   const roles = rolesState?.userId === user.id ? rolesState.roles : [role];
 
-  return <div className="wide-shell dashboard-shell">
+  return <div className={`wide-shell dashboard-shell${role === "patient" ? " dashboard-shell-patient" : ""}`}>
     <div className="dashboard-heading"><div><span className="eyebrow">{roleLabels[role]} workspace</span><h1>{role === "patient" ? `Hello, ${user.first_name || user.username}` : `${roleLabels[role]} dashboard`}</h1><p>{roleDescriptions[role]}</p></div><div className="dashboard-heading-mark" aria-hidden="true">✳</div></div>
     <nav className="dashboard-role-nav" aria-label="Your workspaces">{roles.map(item => <Link key={item} href={`/dashboard/${item}`} aria-current={item === role ? "page" : undefined}>{roleLabels[item]}</Link>)}</nav>
     {error ? <div className="panel dashboard-error" role="alert"><p>{error}</p><button className="button button-secondary" onClick={() => { setFailure(null); setResult(null); setAttempt(value => value + 1); }}>Try again</button><Link href="/dashboard">My dashboard</Link></div> : !data ? <div className="panel dashboard-loading" role="status">Loading {roleLabels[role].toLowerCase()} overview…</div> : <>
-      {role === "patient" && <PatientContent data={data as PatientOverview} />}
+      {role === "patient" && <PatientDashboardContent data={data as PatientOverview} />}
       {role === "doctor" && <DoctorContent data={data as DoctorOverview} />}
       {role === "clinic" && <ClinicContent data={data as ClinicOverview} selectedClinicId={selectedClinicId} onSelectClinic={setSelectedClinicId} />}
       {role === "admin" && <AdminContent data={data as AdminOverview} />}
