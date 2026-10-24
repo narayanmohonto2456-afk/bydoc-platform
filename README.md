@@ -99,6 +99,8 @@ The latest [local predeployment verification record](docs/verification-2026-10-1
 
 ## Deployment readiness
 
+For guided account creation and setup order, start with [your first staging deployment](docs/first-deployment-guide.md). Current verified results and remaining gates are recorded in [the readiness checklist](tasks/deployment-readiness.md).
+
 The [Vercel, Render, and Supabase staging runbook](docs/vercel-render-supabase-deployment.md) is the current deployment path. The earlier [AWS deployment design](docs/aws-deployment.md) remains as a reference. Production settings and a container image exist, but no cloud accounts, domain, or deployed environment are configured yet. **Do not treat a passing build as approval to launch.** Remaining work includes:
 
 - Provisioning and testing the production environment, HTTPS, email delivery, monitoring, backup restoration, and incident procedures.
