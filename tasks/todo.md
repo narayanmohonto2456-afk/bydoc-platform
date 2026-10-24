@@ -41,8 +41,8 @@ All boxes are open. Complete a task only after its acceptance criteria and verif
 ### Task 4: Add clinic schedule commands
 **Description:** Expose validated weekly rules, leave/closure exceptions, and slot blocking through clinic-scoped API commands, with actor and reason recorded.
 **Acceptance criteria:**
-- [ ] Authorized staff can publish rules and exceptions; invalid or overlapping input is rejected.
-- [ ] Every change has an actor, timestamp, and reason; a different clinic receives 404/403.
+- [x] Authorized staff can publish rules and exceptions; invalid or overlapping input is rejected.
+- [x] Every change has an actor, timestamp, and reason; a different clinic receives 404/403.
 **Verification:** New schedule API tests covering timezone boundaries, permissions, and conflicts.
 **Dependencies:** 3.
 **Files likely touched:** backend/apps/appointments/serializers.py, backend/apps/appointments/views.py, backend/apps/appointments/urls.py, backend/apps/appointments/services.py, backend/apps/appointments/test_schedule_api.py.

@@ -72,5 +72,5 @@ Tasks 13-18: staff-booked patient identity, manual/walk-in booking, visit-state 
 
 From backend: python -m pytest --create-db -q, python manage.py makemigrations --check --dry-run, and python manage.py check. From frontend: npm run typecheck, npm run test:auth, and npm run build. Run focused tests at each slice, then a staged browser exercise with two patients competing for one slot, a clinic operator, an interrupted booking request, cancellation, reschedule, notification delivery, and Razorpay test mode where configured. Record results and remaining limits in docs/.
 
-Progress: Tasks 1-3 implemented. Appointment tests: 37 passed; payment tests: 8 passed; full backend suite: 338 passed. Django system and migration checks passed. Schedule and clinic desk work remains.
+Progress: Tasks 1-4 implemented. Appointment tests: 41 passed after schedule commands; payment tests: 8 passed; full backend suite: 338 passed before Task 4. Django system and migration checks passed. Slot publication, clinic UI, patient management, and clinic desk work remain.
 
