@@ -4,6 +4,12 @@ This Next.js application implements registration, password or one-time-code sign
 
 The `/appointments` page searches active clinics and doctors with current verified registrations. Patients can view open slots, review the declared fee, hold a slot for a short period, and confirm a booking. The page shows confirmed status only from the booking API response. If confirmation is interrupted, it retains the same booking request ID for an idempotent retry. The backend checks doctor verification at slot lookup and again when holding or booking. After confirmation, patients can pay at the clinic or use Razorpay checkout if that clinic has enabled online payments. The patient dashboard shows the same payment and refund status. See [payment setup](payments.md).
 
+## Cancellation API policy
+
+Patients and booking users can cancel a confirmed appointment only before its start time. At or after the start time, the API returns HTTP 409 without changing the booking, payment, or notifications. Authorized clinic and operations staff retain their separate cancellation permissions. Retrying an already cancelled booking returns its original result, including after the start time.
+
+Eligible cancellation marks captured payments for a full refund in the same database transaction. If refund state cannot be persisted, the cancellation and its notification changes roll back. `backend/apps/appointments/test_cancellation.py` covers the exact time boundary, rejected states, access checks, retries, refund state, and rollback.
+
 ## Local setup on Windows
 
 From the repository root, start PostgreSQL and Redis:

@@ -606,10 +606,11 @@ def cancel_appointment(
     from apps.operations.models import StaffGrant
     from apps.operations.permissions import has_role
 
+    is_operations_staff = has_role(cancelled_by, StaffGrant.Role.SCHEDULE)
     if not (
         is_patient_or_booking_user
         or is_active_clinic_staff
-        or has_role(cancelled_by, StaffGrant.Role.SCHEDULE)
+        or is_operations_staff
     ):
         raise AppointmentAuthorizationError(
             _("You cannot cancel this appointment.")
@@ -651,6 +652,11 @@ def cancel_appointment(
     )
 
     now = timezone.now()
+
+    if slot.starts_at <= now and not (is_active_clinic_staff or is_operations_staff):
+        raise InvalidAppointmentStateError(
+            _("You can only cancel an appointment before its start time.")
+        )
 
     appointment.status = Appointment.Status.CANCELLED
     appointment.cancelled_at = now
