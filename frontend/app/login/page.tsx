@@ -60,7 +60,7 @@ export default function LoginPage() {
       <button type="button" aria-pressed={method === "email"} onClick={() => { setMethod("email"); setCodeRequested(false); setError(""); }}>Email code</button>
       <button type="button" aria-pressed={method === "sms"} disabled={!smsAvailable} onClick={() => { setMethod("sms"); setCodeRequested(false); setError(""); }}>SMS code</button>
     </div>
-    {!smsAvailable && <p className="field-hint auth-method-note">SMS sign-in is coming soon. Email codes work with verified addresses.</p>}
+    {!smsAvailable && <p className="field-hint auth-method-note">SMS sign-in is currently unavailable. Use your password or a verified email address.</p>}
     {error && <div className="message message-error" role="alert">{error}</div>}
     <form onSubmit={submit}>
       <div className="field"><label htmlFor="identifier">{method === "password" ? "Email or username" : method === "email" ? "Verified email" : "Verified phone (+country code)"}</label><input id="identifier" type={method === "email" ? "email" : method === "sms" ? "tel" : "text"} autoComplete={method === "sms" ? "tel" : "username"} placeholder={method === "password" ? "you@example.com or username" : method === "email" ? "you@example.com" : "+91 98765 43210"} required value={identifier} onChange={event => { setIdentifier(event.target.value); setCodeRequested(false); }} disabled={busy} /></div>

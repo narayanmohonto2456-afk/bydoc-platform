@@ -10,6 +10,19 @@ The sign-in routes live under `/api/v1/auth/`: `login/`, `google/`, `otp/status/
 
 ## Delivery and provider setup
 
+### Local sign-in troubleshooting
+
+Open the frontend at `http://localhost:3000` or `http://127.0.0.1:3000`. In development, API requests to a loopback address use the same hostname as the page so the browser can retain its authentication and CSRF cookies. The development backend permits those two exact frontend origins; production continues to use its explicitly configured origins.
+
+If no code arrives, check the delivery path before retrying:
+
+- Run both the Celery worker and Beat using the README commands. Starting Django, PostgreSQL, and Redis alone does not dispatch OTP messages.
+- With the default file email backend, messages appear in `backend/local-email`, not in an inbox. The worker must be able to write to that directory. Live email requires the SMTP backend and provider settings.
+- Email sign-in requires an already verified email. Sign in with a password and complete email verification from account settings first. A generic accepted response for an unknown or unverified address does not mean a code was created.
+- SMS requires the configured sender, enabled SMS setting, and a verified phone. An unavailable SMS button reflects the backend's reported availability.
+
+The local browser investigation verified email OTP request, worker delivery, code confirmation, and authentication after reload. Real email and SMS delivery still require provider configuration and separate live verification.
+
 Local email codes are written to `backend/local-email`. Production uses the existing SES SMTP configuration: a verified sender identity, SMTP credentials, and production sending access. Test the full request, delivery, and confirmation flow in staging. [SES sender verification](https://docs.aws.amazon.com/ses/latest/dg/verify-addresses-and-domains.html) and [SMTP credential setup](https://docs.aws.amazon.com/ses/latest/dg/smtp-credentials.html) describe the AWS prerequisites.
 
 SMS is off by default. Enable `OTP_SMS_ENABLED=true` only after setting `AWS_SMS_REGION`, `AWS_SMS_ORIGINATION_ID`, `AWS_SMS_ENTITY_ID`, `AWS_SMS_LOGIN_TEMPLATE_ID`, and `AWS_SMS_VERIFY_TEMPLATE_ID` in the API and worker. Grant their task role the required `sms-voice:SendTextMessage` permission. AWS End User Messaging SMS sends transactional messages through `SendTextMessage`. For India, register the sender and DLT entity and approve templates that match the actual login and phone-verification message bodies, including the code placeholder. Confirm real delivery before making the option available. See [AWS India sender requirements](https://docs.aws.amazon.com/sms-voice/latest/userguide/registrations-sms-senderid-india-specify-ids.html) and the [send API](https://boto3.amazonaws.com/v1/documentation/api/1.35.37/reference/services/pinpoint-sms-voice-v2/client/send_text_message.html).
