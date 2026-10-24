@@ -7,8 +7,8 @@ from rest_framework.test import APIClient
 from apps.operations.models import OperationsEvent
 from apps.organizations.models import OrganizationMembership
 
-from .models import AvailabilityRule
-from .test_api import create_affiliation, create_user
+from .models import AppointmentSlot, AvailabilityRule, ScheduleException
+from .test_api import create_affiliation, create_future_slot, create_user, slot_local_date
 
 
 pytestmark = pytest.mark.django_db
@@ -75,3 +75,66 @@ def test_manager_cannot_create_rule_for_another_clinic():
     )
     assert response.status_code == 404
     assert not AvailabilityRule.objects.filter(affiliation=other).exists()
+
+
+def test_closure_blocks_open_slot_and_prevents_held_slot_confirmation():
+    affiliation = create_affiliation()
+    open_slot = create_future_slot(affiliation, hours_from_now=25)
+    held_slot = create_future_slot(affiliation, hours_from_now=24)
+    patient_client = APIClient()
+    patient_client.force_authenticate(user=create_user("closure-patient"))
+    hold = patient_client.post(
+        f"/api/v1/appointments/slots/{held_slot.pk}/hold/", {}, format="json",
+    )
+    assert hold.status_code == 200
+
+    manager = manager_client(affiliation)
+    response = manager.post(
+        f"/api/v1/appointments/clinics/{affiliation.clinic_id}/schedule/exceptions/",
+        {
+            "affiliation_id": str(affiliation.pk),
+            "exception_date": slot_local_date(open_slot).isoformat(),
+            "exception_type": "closed",
+            "reason": "Doctor leave",
+        },
+        format="json",
+    )
+    assert response.status_code == 201
+    assert ScheduleException.objects.filter(affiliation=affiliation).count() == 1
+    open_slot.refresh_from_db()
+    assert open_slot.status == AppointmentSlot.Status.BLOCKED
+    booking = patient_client.post(
+        f"/api/v1/appointments/slots/{held_slot.pk}/book/",
+        {
+            "hold_token": hold.data["hold_token"],
+            "booking_request_id": "8f78521a-721c-444e-9fd6-a334b799dd80",
+        },
+        format="json",
+    )
+    assert booking.status_code == 409
+
+
+def test_clinic_staff_can_block_open_slot_but_not_booked_slot():
+    affiliation = create_affiliation()
+    slot = create_future_slot(affiliation)
+    manager = manager_client(affiliation)
+    url = f"/api/v1/appointments/clinics/{affiliation.clinic_id}/schedule/slots/{slot.pk}/block/"
+    blocked = manager.post(url, {"reason": "Equipment unavailable"}, format="json")
+    assert blocked.status_code == 200
+    slot.refresh_from_db()
+    assert slot.status == AppointmentSlot.Status.BLOCKED
+    assert OperationsEvent.objects.filter(
+        action="schedule.slot.blocked", subject_id=str(slot.pk),
+    ).exists()
+
+    booked = create_future_slot(
+        affiliation, hours_from_now=26, status_value=AppointmentSlot.Status.BOOKED,
+    )
+    booked_response = manager.post(
+        f"/api/v1/appointments/clinics/{affiliation.clinic_id}/schedule/slots/{booked.pk}/block/",
+        {"reason": "Equipment unavailable"},
+        format="json",
+    )
+    assert booked_response.status_code == 409
+    booked.refresh_from_db()
+    assert booked.status == AppointmentSlot.Status.BOOKED

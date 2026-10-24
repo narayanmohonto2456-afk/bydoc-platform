@@ -1,4 +1,5 @@
-from datetime import date
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.db import transaction
 from django.db.models import Q
@@ -14,7 +15,8 @@ from apps.doctors.models import DoctorClinicAffiliation
 from apps.operations.models import OperationsEvent
 from apps.organizations.permissions import can_access_clinic
 
-from .models import AvailabilityRule
+from .models import AppointmentSlot, AvailabilityRule, ScheduleException
+from .services import slot_conflicts_with_exceptions
 
 
 class AvailabilityRuleInputSerializer(serializers.Serializer):
@@ -110,3 +112,159 @@ class ClinicScheduleRulesView(generics.GenericAPIView):
             AvailabilityRuleOutputSerializer(rule).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class ScheduleExceptionInputSerializer(serializers.Serializer):
+    affiliation_id = serializers.UUIDField()
+    exception_date = serializers.DateField()
+    exception_type = serializers.ChoiceField(choices=ScheduleException.Type.choices)
+    start_time = serializers.TimeField(required=False, allow_null=True)
+    end_time = serializers.TimeField(required=False, allow_null=True)
+    public_note = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    reason = serializers.CharField(max_length=250, allow_blank=False, trim_whitespace=True)
+
+    def validate(self, attrs):
+        start = attrs.get("start_time")
+        end = attrs.get("end_time")
+        if attrs["exception_type"] == ScheduleException.Type.CLOSED:
+            if start is not None or end is not None:
+                raise serializers.ValidationError("A full-day closure has no time range.")
+        elif start is None or end is None or end <= start:
+            raise serializers.ValidationError("A valid start and end time are required.")
+        return attrs
+
+
+class ScheduleExceptionOutputSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ScheduleException
+        fields = (
+            "id", "affiliation", "exception_date", "exception_type",
+            "start_time", "end_time", "public_note", "updated_at",
+        )
+
+
+class ClinicScheduleExceptionsView(ClinicScheduleRulesView):
+    serializer_class = ScheduleExceptionInputSerializer
+
+    def get(self, request, clinic_id):
+        clinic = self._clinic(request, clinic_id)
+        exceptions = ScheduleException.objects.filter(
+            affiliation__clinic=clinic,
+        ).order_by("-exception_date", "start_time", "id")
+        return Response(ScheduleExceptionOutputSerializer(exceptions, many=True).data)
+
+    @transaction.atomic
+    def post(self, request, clinic_id):
+        clinic = self._clinic(request, clinic_id)
+        clinic = Clinic.objects.select_for_update().get(pk=clinic.pk)
+        if clinic.status != Clinic.Status.ACTIVE:
+            raise ValidationError({"clinic_id": "The clinic is not active."})
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        affiliation = DoctorClinicAffiliation.objects.filter(
+            pk=data["affiliation_id"],
+            clinic=clinic,
+            status=DoctorClinicAffiliation.Status.ACTIVE,
+        ).first()
+        if affiliation is None:
+            raise ValidationError({"affiliation_id": "An active doctor at this clinic is required."})
+        same_day = ScheduleException.objects.filter(
+            affiliation=affiliation, exception_date=data["exception_date"],
+        )
+        kind = data["exception_type"]
+        if same_day.filter(exception_type=ScheduleException.Type.CLOSED).exists() or (
+            kind == ScheduleException.Type.CLOSED and same_day.exists()
+        ):
+            raise ValidationError({"exception_date": "This day already has a schedule exception."})
+        if kind == ScheduleException.Type.CUSTOM_HOURS and same_day.filter(
+            exception_type=kind,
+        ).exists():
+            raise ValidationError({"exception_date": "Custom hours already exist for this date."})
+        if kind == ScheduleException.Type.UNAVAILABLE and same_day.filter(
+            exception_type=kind,
+            start_time__lt=data["end_time"],
+            end_time__gt=data["start_time"],
+        ).exists():
+            raise ValidationError({"start_time": "This unavailable period overlaps another."})
+        exception = ScheduleException.objects.create(
+            affiliation=affiliation,
+            exception_date=data["exception_date"],
+            exception_type=kind,
+            start_time=data.get("start_time"),
+            end_time=data.get("end_time"),
+            public_note=data.get("public_note", ""),
+        )
+        try:
+            zone = ZoneInfo(clinic.timezone)
+        except ZoneInfoNotFoundError as error:
+            raise ValidationError({"clinic_id": "The clinic timezone is invalid."}) from error
+        start = datetime.combine(data["exception_date"], time.min, tzinfo=zone)
+        end = start + timedelta(days=1)
+        exceptions = list(ScheduleException.objects.filter(
+            affiliation=affiliation, exception_date=data["exception_date"],
+        ))
+        open_slots = AppointmentSlot.objects.select_for_update().filter(
+            affiliation=affiliation,
+            starts_at__gte=start,
+            starts_at__lt=end,
+            status=AppointmentSlot.Status.OPEN,
+        )
+        for slot in open_slots:
+            if slot_conflicts_with_exceptions(slot, zone, exceptions):
+                slot.status = AppointmentSlot.Status.BLOCKED
+                slot.save(update_fields=["status", "updated_at"])
+        clinic.schedule_updated_at = timezone.now()
+        clinic.save(update_fields=["schedule_updated_at", "updated_at"])
+        OperationsEvent.objects.create(
+            actor=request.user,
+            action="schedule.exception.created",
+            subject_type="schedule_exception",
+            subject_id=str(exception.pk),
+            note=data["reason"],
+            metadata={"clinic_id": str(clinic.pk)},
+        )
+        return Response(
+            ScheduleExceptionOutputSerializer(exception).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class SlotBlockSerializer(serializers.Serializer):
+    reason = serializers.CharField(max_length=250, allow_blank=False, trim_whitespace=True)
+
+
+class ClinicSlotBlockView(ClinicScheduleRulesView):
+    serializer_class = SlotBlockSerializer
+
+    @transaction.atomic
+    def post(self, request, clinic_id, slot_id):
+        clinic = self._clinic(request, clinic_id)
+        if clinic.status != Clinic.Status.ACTIVE:
+            raise ValidationError({"clinic_id": "The clinic is not active."})
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        slot = get_object_or_404(
+            AppointmentSlot.objects.select_for_update(),
+            pk=slot_id,
+            affiliation__clinic=clinic,
+        )
+        if slot.status == AppointmentSlot.Status.BLOCKED:
+            return Response({"slot_id": str(slot.pk), "status": slot.status})
+        if slot.status != AppointmentSlot.Status.OPEN:
+            return Response(
+                {"detail": "Only an open slot can be blocked."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        slot.status = AppointmentSlot.Status.BLOCKED
+        slot.save(update_fields=["status", "updated_at"])
+        Clinic.objects.filter(pk=clinic.pk).update(schedule_updated_at=timezone.now())
+        OperationsEvent.objects.create(
+            actor=request.user,
+            action="schedule.slot.blocked",
+            subject_type="appointment_slot",
+            subject_id=str(slot.pk),
+            note=serializer.validated_data["reason"],
+            metadata={"clinic_id": str(clinic.pk)},
+        )
+        return Response({"slot_id": str(slot.pk), "status": slot.status})

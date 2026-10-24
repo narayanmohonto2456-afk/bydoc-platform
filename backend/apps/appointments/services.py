@@ -75,6 +75,26 @@ def _validate_authenticated_user(user, label):
         )
 
 
+def slot_conflicts_with_exceptions(slot, clinic_timezone, exceptions):
+    local_start = slot.starts_at.astimezone(clinic_timezone)
+    local_end = slot.ends_at.astimezone(clinic_timezone)
+    custom_windows = []
+    for item in exceptions:
+        if item.exception_date != local_start.date():
+            continue
+        if item.exception_type == ScheduleException.Type.CLOSED:
+            return True
+        if item.exception_type == ScheduleException.Type.UNAVAILABLE:
+            if local_start.time() < item.end_time and local_end.time() > item.start_time:
+                return True
+        if item.exception_type == ScheduleException.Type.CUSTOM_HOURS:
+            custom_windows.append(item)
+    return bool(custom_windows) and not any(
+        local_start.time() >= item.start_time and local_end.time() <= item.end_time
+        for item in custom_windows
+    )
+
+
 def _validate_slot_eligibility(slot):
     affiliation = slot.affiliation
     clinic = affiliation.clinic
@@ -118,6 +138,17 @@ def _validate_slot_eligibility(slot):
         raise SlotUnavailableError(
             _("Past appointment slots cannot be booked.")
         )
+
+    try:
+        clinic_timezone = ZoneInfo(clinic.timezone)
+    except ZoneInfoNotFoundError as error:
+        raise SlotUnavailableError(_("The clinic timezone is invalid.")) from error
+    local_date = slot.starts_at.astimezone(clinic_timezone).date()
+    exceptions = ScheduleException.objects.filter(
+        affiliation=affiliation, exception_date=local_date,
+    )
+    if slot_conflicts_with_exceptions(slot, clinic_timezone, exceptions):
+        raise SlotUnavailableError(_("This time is unavailable due to a schedule change."))
 
 
 @transaction.atomic
