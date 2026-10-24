@@ -109,6 +109,18 @@ def test_untrusted_origin_is_rejected_even_with_valid_token():
     assert not User.objects.filter(username="origin-patient").exists()
 
 
+@pytest.mark.parametrize("origin", ["http://localhost:3000", "http://127.0.0.1:3000"])
+def test_local_login_origins_allow_csrf_and_credentialed_requests(origin):
+    client = browser()
+    User.objects.create_user(username="local-origin", password=PASSWORD)
+    response = post(client, "login", {
+        "username": "local-origin", "password": PASSWORD,
+    }, HTTP_ORIGIN=origin)
+    assert response.status_code == 200
+    assert response["Access-Control-Allow-Origin"] == origin
+    assert response["Access-Control-Allow-Credentials"] == "true"
+
+
 @pytest.mark.parametrize("field,value", [
     ("is_staff", True), ("is_superuser", True), ("is_active", False),
     ("groups", [1]), ("user_permissions", [1]), ("id", "chosen-id"),

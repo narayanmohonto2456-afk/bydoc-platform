@@ -18,6 +18,7 @@ class DashboardAppointmentSerializer(serializers.Serializer):
 class PatientDashboardSerializer(serializers.Serializer):
     upcoming_count = serializers.IntegerField()
     open_support_count = serializers.IntegerField()
+    next_appointment = DashboardAppointmentSerializer(allow_null=True)
     appointments = DashboardAppointmentSerializer(many=True)
     updated_at = serializers.DateTimeField()
 

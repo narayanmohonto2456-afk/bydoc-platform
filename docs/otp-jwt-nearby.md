@@ -4,11 +4,28 @@ BYdoc offers password sign-in, a one-time code to a verified email, and a one-ti
 
 ## Browser authentication
 
+SMS enrollment requires the current password when requesting and confirming a phone-verification code. Both requests accept `current_password`; confirmation also accepts `code`. Accounts created through Google can set a password using their verified recovery email before enabling SMS sign-in. A session alone cannot enroll a new login factor. Django admin login uses the same shared IP/account counters as API password login and fails closed when the counter store is unavailable.
+
+Completing a password reset or email verification invalidates the user's outstanding recovery links, OTP challenges, and JWT sessions. The user must sign in again. A password reset link must still belong to the account's current verified email.
+
 The API sets an HttpOnly access JWT cookie (10 minutes) and an opaque rotating refresh cookie (30 days). The frontend refreshes on an expired access credential, then retries the request. Logout revokes the stored refresh session. Password changes invalidate credentials through the account authentication hash. Cookie-based unsafe requests require a CSRF token. Production cookies use Secure and `__Host-` names; Django admin keeps its separate staff session. The API also accepts a Bearer access JWT where a client already has one, but this release does not expose a mobile token issuance flow.
 
 The sign-in routes live under `/api/v1/auth/`: `login/`, `google/`, `otp/status/`, `otp/request/`, `otp/confirm/`, `token/refresh/`, and `logout/`. Phone verification uses `phone/status/`, `phone/verify/request/`, and `phone/verify/confirm/`. OTP requests return a generic response for unknown contacts. Codes expire after 10 minutes, are single-use, allow five attempts, and are queued for Celery delivery. Start both the worker and Beat as shown in the README.
 
 ## Delivery and provider setup
+
+### Local sign-in troubleshooting
+
+Open the frontend at `http://localhost:3000` or `http://127.0.0.1:3000`. In development, API requests to a loopback address use the same hostname as the page so the browser can retain its authentication and CSRF cookies. The development backend permits those two exact frontend origins; production continues to use its explicitly configured origins.
+
+If no code arrives, check the delivery path before retrying:
+
+- Run both the Celery worker and Beat using the README commands. Starting Django, PostgreSQL, and Redis alone does not dispatch OTP messages.
+- With the default file email backend, messages appear in `backend/local-email`, not in an inbox. The worker must be able to write to that directory. Live email requires the SMTP backend and provider settings.
+- Email sign-in requires an already verified email. Sign in with a password and complete email verification from account settings first. A generic accepted response for an unknown or unverified address does not mean a code was created.
+- SMS requires the configured sender, enabled SMS setting, and a verified phone. An unavailable SMS button reflects the backend's reported availability.
+
+The local browser investigation verified email OTP request, worker delivery, code confirmation, and authentication after reload. Real email and SMS delivery still require provider configuration and separate live verification.
 
 Local email codes are written to `backend/local-email`. Production uses the existing SES SMTP configuration: a verified sender identity, SMTP credentials, and production sending access. Test the full request, delivery, and confirmation flow in staging. [SES sender verification](https://docs.aws.amazon.com/ses/latest/dg/verify-addresses-and-domains.html) and [SMTP credential setup](https://docs.aws.amazon.com/ses/latest/dg/smtp-credentials.html) describe the AWS prerequisites.
 

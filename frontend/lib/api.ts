@@ -17,6 +17,17 @@ export type PatientProfile = {
 
 const apiBase = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
 
+function requestUrl(path: string): string {
+  const base = new URL(apiBase);
+  // Local cookies must stay on the same site, whether opened via localhost or IPv4.
+  if (process.env.NODE_ENV === "development" && typeof window !== "undefined"
+    && ["localhost", "127.0.0.1"].includes(base.hostname)
+    && ["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+    base.hostname = window.location.hostname;
+  }
+  return `${base.toString().replace(/\/$/, "")}${path}`;
+}
+
 export function administrationUrl(): string {
   return new URL("/admin/", apiBase).toString();
 }
@@ -40,7 +51,7 @@ function errorMessage(data: unknown): string {
 }
 
 async function csrfToken(): Promise<string> {
-  const response = await fetch(`${apiBase}/auth/csrf/`, {
+  const response = await fetch(requestUrl("/auth/csrf/"), {
     credentials: "include",
     cache: "no-store",
   });
@@ -54,10 +65,10 @@ let refreshInFlight: Promise<boolean> | null = null;
 async function refreshSession(): Promise<boolean> {
   const refreshOnce = async () => {
     // Another tab may have refreshed while this request was waiting for the lock.
-    const current = await fetch(`${apiBase}/auth/me/`, { credentials: "include", cache: "no-store" });
+    const current = await fetch(requestUrl("/auth/me/"), { credentials: "include", cache: "no-store" });
     if (current.ok) return true;
     const headers = new Headers({ "X-CSRFToken": await csrfToken() });
-    const refreshed = await fetch(`${apiBase}/auth/token/refresh/`, {
+    const refreshed = await fetch(requestUrl("/auth/token/refresh/"), {
       method: "POST", headers, credentials: "include", cache: "no-store",
     });
     return refreshed.ok;
@@ -80,11 +91,11 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const method = (init.method || "GET").toUpperCase();
   const headers = new Headers(init.headers);
   if (init.body) headers.set("Content-Type", "application/json");
-  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
-    headers.set("X-CSRFToken", await csrfToken());
-  }
   let response: Response;
   try {
+    if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+      headers.set("X-CSRFToken", await csrfToken());
+    }
     const request: RequestInit = {
       ...init,
       method,
@@ -92,12 +103,13 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       credentials: "include",
       cache: "no-store",
     };
-    response = await fetch(`${apiBase}${path}`, request);
+    response = await fetch(requestUrl(path), request);
     if (response.status === 401 && !path.startsWith("/auth/token/")
       && !["/auth/login/", "/auth/google/"].includes(path)) {
-      if (await sharedRefresh()) response = await fetch(`${apiBase}${path}`, request);
+      if (await sharedRefresh()) response = await fetch(requestUrl(path), request);
     }
-  } catch {
+  } catch (cause) {
+    if (cause instanceof ApiError) throw cause;
     throw new ApiError(0, "Cannot reach BYdoc right now. Please try again.");
   }
   if (response.status === 204) return undefined as T;

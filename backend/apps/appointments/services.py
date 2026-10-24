@@ -75,6 +75,26 @@ def _validate_authenticated_user(user, label):
         )
 
 
+def slot_conflicts_with_exceptions(slot, clinic_timezone, exceptions):
+    local_start = slot.starts_at.astimezone(clinic_timezone)
+    local_end = slot.ends_at.astimezone(clinic_timezone)
+    custom_windows = []
+    for item in exceptions:
+        if item.exception_date != local_start.date():
+            continue
+        if item.exception_type == ScheduleException.Type.CLOSED:
+            return True
+        if item.exception_type == ScheduleException.Type.UNAVAILABLE:
+            if local_start.time() < item.end_time and local_end.time() > item.start_time:
+                return True
+        if item.exception_type == ScheduleException.Type.CUSTOM_HOURS:
+            custom_windows.append(item)
+    return bool(custom_windows) and not any(
+        local_start.time() >= item.start_time and local_end.time() <= item.end_time
+        for item in custom_windows
+    )
+
+
 def _validate_slot_eligibility(slot):
     affiliation = slot.affiliation
     clinic = affiliation.clinic
@@ -118,6 +138,17 @@ def _validate_slot_eligibility(slot):
         raise SlotUnavailableError(
             _("Past appointment slots cannot be booked.")
         )
+
+    try:
+        clinic_timezone = ZoneInfo(clinic.timezone)
+    except ZoneInfoNotFoundError as error:
+        raise SlotUnavailableError(_("The clinic timezone is invalid.")) from error
+    local_date = slot.starts_at.astimezone(clinic_timezone).date()
+    exceptions = ScheduleException.objects.filter(
+        affiliation=affiliation, exception_date=local_date,
+    )
+    if slot_conflicts_with_exceptions(slot, clinic_timezone, exceptions):
+        raise SlotUnavailableError(_("This time is unavailable due to a schedule change."))
 
 
 @transaction.atomic
@@ -303,6 +334,8 @@ def book_held_slot(
         patient=patient,
         booked_by=booked_by,
         booking_request_id=booking_request_id,
+        consultation_fee=slot.affiliation.consultation_fee,
+        currency_code=slot.affiliation.currency_code,
         status=Appointment.Status.CONFIRMED,
     )
 
@@ -356,9 +389,9 @@ def generate_slots_for_date(affiliation, target_date):
     """
     Generate slots for one doctor-clinic affiliation and local date.
 
-    Existing slots are preserved. The database uniqueness constraint
-    prevents duplicate slots when generation runs more than once.
+    Keep bookings and manual blocks while reconciling future schedule blocks.
     """
+    affiliation = DoctorClinicAffiliation.objects.select_for_update().get(pk=affiliation.pk)
     if (
         affiliation.status
         != DoctorClinicAffiliation.Status.ACTIVE
@@ -398,11 +431,10 @@ def generate_slots_for_date(affiliation, target_date):
         )
     )
 
-    if any(
+    is_closed = any(
         item.exception_type == ScheduleException.Type.CLOSED
         for item in exceptions
-    ):
-        return AppointmentSlot.objects.none()
+    )
 
     custom_windows = [
         (item.start_time, item.end_time)
@@ -413,7 +445,9 @@ def generate_slots_for_date(affiliation, target_date):
         )
     ]
 
-    if custom_windows:
+    if is_closed:
+        availability_windows = []
+    elif custom_windows:
         availability_windows = custom_windows
     else:
         rules = AvailabilityRule.objects.filter(
@@ -503,11 +537,34 @@ def generate_slots_for_date(affiliation, target_date):
     )
     local_next_day = local_day_start + timedelta(days=1)
 
-    return AppointmentSlot.objects.filter(
+    day_slots = AppointmentSlot.objects.filter(
         affiliation=affiliation,
         starts_at__gte=local_day_start,
         starts_at__lt=local_next_day,
-    ).order_by("starts_at")
+    )
+    changed = []
+    for slot in day_slots.select_for_update().order_by("starts_at"):
+        if slot.starts_at <= now or slot.status == AppointmentSlot.Status.BOOKED:
+            continue
+        if slot.status == AppointmentSlot.Status.BLOCKED and not slot.schedule_blocked:
+            continue
+        candidate = candidate_slots.get(slot.starts_at)
+        allowed = candidate is not None and candidate.ends_at == slot.ends_at
+        if allowed and not slot.schedule_blocked:
+            continue
+        if not allowed and slot.schedule_blocked:
+            continue
+        slot.status = AppointmentSlot.Status.OPEN if allowed else AppointmentSlot.Status.BLOCKED
+        slot.schedule_blocked = not allowed
+        slot.held_by = None
+        slot.hold_token = None
+        slot.hold_expires_at = None
+        slot.updated_at = now
+        changed.append(slot)
+    AppointmentSlot.objects.bulk_update(
+        changed, ["status", "schedule_blocked", "held_by", "hold_token", "hold_expires_at", "updated_at"],
+    )
+    return day_slots.order_by("starts_at")
 
 
 class AppointmentAuthorizationError(AppointmentBookingError):
@@ -573,10 +630,11 @@ def cancel_appointment(
     from apps.operations.models import StaffGrant
     from apps.operations.permissions import has_role
 
+    is_operations_staff = has_role(cancelled_by, StaffGrant.Role.SCHEDULE)
     if not (
         is_patient_or_booking_user
         or is_active_clinic_staff
-        or has_role(cancelled_by, StaffGrant.Role.SCHEDULE)
+        or is_operations_staff
     ):
         raise AppointmentAuthorizationError(
             _("You cannot cancel this appointment.")
@@ -618,6 +676,11 @@ def cancel_appointment(
     )
 
     now = timezone.now()
+
+    if slot.starts_at <= now and not (is_active_clinic_staff or is_operations_staff):
+        raise InvalidAppointmentStateError(
+            _("You can only cancel an appointment before its start time.")
+        )
 
     appointment.status = Appointment.Status.CANCELLED
     appointment.cancelled_at = now

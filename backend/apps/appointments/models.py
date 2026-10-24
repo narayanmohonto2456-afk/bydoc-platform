@@ -173,6 +173,7 @@ class AppointmentSlot(models.Model):
     )
     hold_token = models.UUIDField(unique=True, blank=True, null=True)
     hold_expires_at = models.DateTimeField(blank=True, null=True)
+    schedule_blocked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -254,6 +255,10 @@ class Appointment(models.Model):
         on_delete=models.PROTECT,
         related_name="appointments",
     )
+    consultation_fee = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+    )
+    currency_code = models.CharField(max_length=3, blank=True, default="")
     patient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,

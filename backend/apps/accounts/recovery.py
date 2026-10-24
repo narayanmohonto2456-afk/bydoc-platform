@@ -12,7 +12,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from .models import AccountRecoveryRequest, User, VerifiedEmail
+from .models import AccountRecoveryRequest, AuthSession, OtpChallenge, User, VerifiedEmail
 
 
 LINK_LIFETIME = timedelta(minutes=30)
@@ -62,6 +62,8 @@ def consume_link(token, purpose, password=None):
             except IntegrityError:
                 raise ValidationError({"token": "This email address is unavailable."})
         else:
+            if not VerifiedEmail.objects.filter(user=user, address__iexact=record.address).exists():
+                raise ValidationError({"token": "This link is invalid or expired."})
             if password is None:
                 raise ValidationError({"password": "A new password is required."})
             try:
@@ -71,7 +73,12 @@ def consume_link(token, purpose, password=None):
             user.set_password(password)
             user.save(update_fields=["password", "updated_at"])
             # Django's session auth hash invalidates all existing sessions.
-        record.used_at = timezone.now()
+        # Recovery changes invalidate credentials issued against the old identity.
+        now = timezone.now()
+        AccountRecoveryRequest.objects.filter(user=user, used_at__isnull=True).exclude(pk=record.pk).update(used_at=now)
+        OtpChallenge.objects.filter(user=user, used_at__isnull=True).update(used_at=now)
+        AuthSession.objects.filter(user=user, revoked_at__isnull=True).update(revoked_at=now)
+        record.used_at = now
         record.save(update_fields=["used_at"])
         return user
 

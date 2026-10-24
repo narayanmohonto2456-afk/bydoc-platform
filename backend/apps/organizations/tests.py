@@ -3,9 +3,12 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import Organization, OrganizationMembership
+from apps.clinics.models import Clinic
+from .models import ClinicStaffAssignment, Organization, OrganizationMembership
+from .permissions import can_access_clinic
 
 
 User = get_user_model()
@@ -132,3 +135,25 @@ def test_organization_with_membership_cannot_be_deleted():
 
     with pytest.raises(ProtectedError):
         organization.delete()
+
+@pytest.mark.django_db
+def test_cross_organization_assignment_cannot_grant_clinic_access():
+    user = User.objects.create_user(username="cross-org-receptionist")
+    own = Organization.objects.create(name="Own", slug="own", status=Organization.Status.ACTIVE)
+    other = Organization.objects.create(name="Other", slug="other", status=Organization.Status.ACTIVE)
+    membership = OrganizationMembership.objects.create(
+        organization=own, user=user, role=OrganizationMembership.Role.RECEPTIONIST,
+        status=OrganizationMembership.Status.ACTIVE, joined_at=timezone.now(),
+    )
+    foreign_clinic = Clinic.objects.create(
+        organization=other, name="Foreign", slug="foreign", status=Clinic.Status.ACTIVE,
+        address_line_1="1 Main Road", locality="Centre", district="Kolkata",
+        state="West Bengal", postal_code="700001", timezone="UTC",
+    )
+    assignment = ClinicStaffAssignment(membership=membership, clinic=foreign_clinic)
+    with pytest.raises(ValidationError):
+        assignment.full_clean()
+
+    # Even malformed rows inserted outside ModelForm cannot cross the permission boundary.
+    ClinicStaffAssignment.objects.create(membership=membership, clinic=foreign_clinic)
+    assert not can_access_clinic(user, foreign_clinic.pk)

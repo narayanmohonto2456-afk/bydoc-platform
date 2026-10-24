@@ -46,6 +46,10 @@ def test_superuser_grants_and_revokes_scoped_access_with_audit():
     owner = User.objects.create_superuser(username="staff-owner", password="test")
     agent = User.objects.create_user(username="new-agent", password="test")
     api = client_for(owner)
+    search = api.get("/api/v1/operations/staff/?search=new-agent")
+    assert search.status_code == 200
+    assert search.data["users"][0]["id"] == agent.pk
+    assert client_for(agent).get("/api/v1/operations/staff/?search=staff").status_code == 403
     path = f"/api/v1/operations/staff/{agent.pk}/grant/"
     response = api.post(path, {"role": "support", "active": True, "note": "Assigned to the support team"}, format="json")
     assert response.status_code == 200

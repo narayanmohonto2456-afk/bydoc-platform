@@ -7,7 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 type Role = "provider" | "support" | "finance" | "schedule" | "delivery";
 type Tab = Role | "staff" | "audit";
 type Row = Record<string, unknown> & { id?: string; user_id?: string };
-type Queue = { results: Row[]; assignees?: { id: string; username: string }[]; recent_webhook_count?: number; gateway_configured?: boolean; webhook_failures?: { event_id: string; event_type: string; error_code: string; failed_count: number; last_seen_at: string }[] };
+type Queue = { results: Row[]; users?: { id: string; username: string; email: string | null }[]; assignees?: { id: string; username: string }[]; recent_webhook_count?: number; gateway_configured?: boolean; webhook_failures?: { event_id: string; event_type: string; error_code: string; failed_count: number; last_seen_at: string }[] };
 type SupportDetail = { id: string; reference: string; subject: string; description: string; status: string; events: { id: string; event_type: string; actor_role: string; message: string; created_at: string }[] };
 type Action = { label: string; path: string; kind: "reason" | "review" | "status" | "investigation" | "support_status" | "support_reply" | "support_assign" | "escalate" | "grant"; value?: string | boolean };
 
@@ -35,6 +35,8 @@ export function OperationsWorkspace() {
   const [checks, setChecks] = useState({ identity: false, registration: false, duplicate: false });
   const [choice, setChoice] = useState("");
   const [targetUser, setTargetUser] = useState("");
+  const [userQuery, setUserQuery] = useState("");
+  const [userMatches, setUserMatches] = useState<NonNullable<Queue["users"]>>([]);
   const [searchReference, setSearchReference] = useState("");
   const [activeReference, setActiveReference] = useState("");
   const [busy, setBusy] = useState(false);
@@ -73,6 +75,14 @@ export function OperationsWorkspace() {
   async function openCase(id: string) {
     try { setCaseDetails(await apiRequest<SupportDetail>(`/support/cases/${id}/`)); }
     catch (cause) { setError(cause instanceof ApiError ? cause.message : "Could not open this case."); }
+  }
+  async function searchUsers() {
+    if (userQuery.trim().length < 2) { setError("Enter at least two characters to find an account."); return; }
+    try {
+      const result = await apiRequest<Queue>(`/operations/staff/?search=${encodeURIComponent(userQuery.trim())}`);
+      setUserMatches(result.users || []);
+      setTargetUser(""); setError("");
+    } catch (cause) { setError(cause instanceof ApiError ? cause.message : "Could not search accounts."); }
   }
 
   async function submit(event: React.FormEvent) {
@@ -115,7 +125,7 @@ export function OperationsWorkspace() {
       {tab === "finance" && !!queue.webhook_failures?.length && <section className="panel operations-card"><h3>Webhook failures</h3><p className="operations-hint">These signed events failed processing. Razorpay can retry them; investigate the related payment and reconcile with the provider.</p><ul>{queue.webhook_failures.map(item => <li key={item.event_id}>{item.event_type || "Unknown event"} · {item.error_code} · {item.failed_count} attempt(s) · {when(item.last_seen_at)}</li>)}</ul></section>}
       {tab === "support" && <p className="operations-hint">Response targets: high 4 hours, normal 24 hours, low 48 hours. The target shown uses case creation time.</p>}
       {tab === "schedule" && <form className="operations-search" onSubmit={event => { event.preventDefault(); setActiveReference(searchReference.trim()); }}><label>Find booking by reference<input value={searchReference} onChange={event => setSearchReference(event.target.value)} placeholder="Booking UUID" /></label><button className="button" type="submit">Find</button><button className="button button-secondary" type="button" onClick={() => { setSearchReference(""); setActiveReference(""); }}>Clear</button></form>}
-      {tab === "staff" && <form className="panel operations-grant" onSubmit={event => { event.preventDefault(); if (targetUser && choice) begin({ label: "Grant access", path: `/operations/staff/${targetUser}/grant/`, kind: "grant", value: true }); }}><h3>Grant staff access</h3><label>User ID<input value={targetUser} onChange={event => setTargetUser(event.target.value)} placeholder="Account UUID" required /></label><label>Role<select value={choice} onChange={event => setChoice(event.target.value)} required><option value="">Select role</option>{(Object.keys(labels).slice(0, 5) as Role[]).map(role => <option key={role} value={role}>{labels[role]}</option>)}</select></label><button className="button" type="submit">Continue</button></form>}
+      {tab === "staff" && <form className="panel operations-grant" onSubmit={event => { event.preventDefault(); if (targetUser && choice) begin({ label: "Grant access", path: `/operations/staff/${targetUser}/grant/`, kind: "grant", value: true }); }}><h3>Grant staff access</h3><label>Find account<input value={userQuery} onChange={event => { setUserQuery(event.target.value); setUserMatches([]); setTargetUser(""); }} placeholder="Username or email" minLength={2} maxLength={100} /></label><button className="button button-secondary" type="button" onClick={() => void searchUsers()}>Search</button><label>Account<select value={targetUser} onChange={event => setTargetUser(event.target.value)} required><option value="">Select account</option>{userMatches.map(person => <option key={person.id} value={person.id}>{person.username}{person.email ? ` · ${person.email}` : ""}</option>)}</select></label><label>Role<select value={choice} onChange={event => setChoice(event.target.value)} required><option value="">Select role</option>{(Object.keys(labels).slice(0, 5) as Role[]).map(role => <option key={role} value={role}>{labels[role]}</option>)}</select></label><button className="button" type="submit">Continue</button></form>}
       {!rows.length && <div className="panel operations-empty">No records in this queue.</div>}
       <div className="operations-list">{rows.map((row, index) => {
         const id = String(row.id || row.user_id || index);

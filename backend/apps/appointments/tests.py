@@ -478,6 +478,48 @@ def test_custom_hours_replace_normal_availability():
     ]
 
 
+
+def test_republishing_closed_day_preserves_bookings_and_reopens_only_schedule_blocks():
+    affiliation = create_affiliation()
+    target_date = future_clinic_date()
+    create_availability_rule(affiliation, target_date)
+    slots = list(generate_slots_for_date(affiliation, target_date))
+    patient = create_user("schedule-existing-patient")
+    booked_hold = hold_slot(slots[0].pk, patient)
+    appointment = book_held_slot(
+        slot_id=slots[0].pk, hold_token=booked_hold.hold_token,
+        patient=patient, booked_by=patient,
+    )
+    held_user = create_user("schedule-held-patient")
+    hold_slot(slots[1].pk, held_user)
+    slots[2].status = AppointmentSlot.Status.BLOCKED
+    slots[2].save(update_fields=["status"])
+
+    exception = ScheduleException.objects.create(
+        affiliation=affiliation, exception_date=target_date,
+        exception_type=ScheduleException.Type.CLOSED,
+    )
+    generate_slots_for_date(affiliation, target_date)
+    for slot in slots:
+        slot.refresh_from_db()
+    assert slots[0].status == AppointmentSlot.Status.BOOKED
+    assert Appointment.objects.get(pk=appointment.pk).status == Appointment.Status.CONFIRMED
+    assert slots[1].status == AppointmentSlot.Status.BLOCKED
+    assert slots[3].status == AppointmentSlot.Status.BLOCKED
+    assert slots[3].schedule_blocked is True
+
+    exception.delete()
+    generate_slots_for_date(affiliation, target_date)
+    for slot in slots:
+        slot.refresh_from_db()
+    assert slots[0].status == AppointmentSlot.Status.BOOKED
+    assert slots[1].status == AppointmentSlot.Status.OPEN
+    assert slots[2].status == AppointmentSlot.Status.BLOCKED
+    assert slots[3].status == AppointmentSlot.Status.OPEN
+    assert AppointmentSlot.objects.filter(affiliation=affiliation).count() == 4
+
+
+
 def test_inactive_affiliation_cannot_generate_slots():
     affiliation = create_affiliation()
     target_date = future_clinic_date()

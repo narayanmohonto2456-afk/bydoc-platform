@@ -4,7 +4,6 @@ from datetime import datetime, time, timedelta
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from django.db.models import Count
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import permissions
@@ -23,6 +22,7 @@ from apps.clinics.models import Clinic
 from apps.doctors.models import DoctorProfile, DoctorRegistration
 from apps.onboarding.models import ClinicApplication, DoctorApplication
 from apps.organizations.models import Organization, OrganizationMembership
+from apps.organizations.permissions import accessible_clinics
 from apps.support.models import SupportCase
 
 from .serializers import (
@@ -42,28 +42,7 @@ def active_memberships(user):
 
 
 def clinic_memberships(user):
-    memberships = list(active_memberships(user))
-    clinic_counts = dict(
-        Clinic.objects.filter(organization_id__in=[item.organization_id for item in memberships])
-        .values("organization_id")
-        .annotate(total=Count("id"))
-        .values_list("organization_id", "total")
-    )
-    # There is no location assignment model yet. A receptionist in a group
-    # cannot safely be granted access to every clinic in that organization.
-    return [
-        item for item in memberships
-        if item.role != OrganizationMembership.Role.RECEPTIONIST
-        or clinic_counts.get(item.organization_id, 0) == 1
-    ]
-
-
-def accessible_clinics(user, memberships=None):
-    memberships = clinic_memberships(user) if memberships is None else memberships
-    return Clinic.objects.filter(
-        organization_id__in=[item.organization_id for item in memberships],
-        status__in=[Clinic.Status.ACTIVE, Clinic.Status.ONBOARDING, Clinic.Status.TEMPORARILY_CLOSED],
-    ).order_by("name", "id")
+    return list(active_memberships(user))
 
 
 def available_roles(user):
@@ -111,7 +90,11 @@ class PatientDashboardView(DashboardView):
             slot__starts_at__gte=now,
             status__in=[Appointment.Status.CONFIRMED, Appointment.Status.CHECKED_IN],
         )
-        recent = appointments.select_related(
+        next_visit = upcoming.select_related(
+            "slot__affiliation__doctor", "slot__affiliation__clinic",
+        ).order_by("slot__starts_at").first()
+        other_appointments = appointments.exclude(pk=next_visit.pk) if next_visit else appointments
+        recent = other_appointments.select_related(
             "slot__affiliation__doctor", "slot__affiliation__clinic",
         ).order_by("-slot__starts_at")[:6]
         return Response({
@@ -119,6 +102,7 @@ class PatientDashboardView(DashboardView):
             "open_support_count": SupportCase.objects.filter(requester=request.user).exclude(
                 status__in=[SupportCase.Status.RESOLVED, SupportCase.Status.CLOSED],
             ).count(),
+            "next_appointment": appointment_card(next_visit) if next_visit else None,
             "appointments": [appointment_card(item) for item in recent],
             "updated_at": now,
         })
@@ -159,7 +143,7 @@ class ClinicDashboardView(DashboardView):
     def get(self, request):
         membership_list = clinic_memberships(request.user)
         memberships = {item.organization_id: item.role for item in membership_list}
-        clinics = list(accessible_clinics(request.user, membership_list))
+        clinics = list(accessible_clinics(request.user))
         if not clinics:
             raise PermissionDenied("An active clinic membership is required.")
         requested_id = request.query_params.get("clinic_id")

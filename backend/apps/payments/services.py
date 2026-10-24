@@ -14,10 +14,9 @@ class PaymentError(Exception):
 
 
 def amount_in_paise(appointment):
-    affiliation = appointment.slot.affiliation
-    if affiliation.currency_code != "INR" or affiliation.consultation_fee is None:
+    if appointment.currency_code != "INR" or appointment.consultation_fee is None:
         raise PaymentError("Online payment is unavailable for this consultation.")
-    amount = affiliation.consultation_fee * Decimal(100)
+    amount = appointment.consultation_fee * Decimal(100)
     if amount <= 0 or amount > 2_147_483_647 or amount != amount.to_integral_value():
         raise PaymentError("Online payment is unavailable for this consultation.")
     return int(amount)
@@ -27,9 +26,15 @@ def payment_available(appointment):
     if not gateway.configured():
         return False
     try:
-        amount_in_paise(appointment)
+        existing = PaymentIntent.objects.filter(appointment=appointment).first()
+        if existing is None:
+            amount_in_paise(appointment)
         account = ClinicPaymentAccount.objects.get(clinic_id=appointment.slot.affiliation.clinic_id)
-        return account.enabled and account.razorpay_linked_account_id.startswith("acc_")
+        return (
+            account.enabled
+            and account.razorpay_linked_account_id.startswith("acc_")
+            and (existing is None or existing.linked_account_id == account.razorpay_linked_account_id)
+        )
     except (PaymentError, ClinicPaymentAccount.DoesNotExist):
         return False
 

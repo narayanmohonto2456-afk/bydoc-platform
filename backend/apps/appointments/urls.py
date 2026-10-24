@@ -9,12 +9,28 @@ from .views import (
     PublicProviderListView,
 )
 from .nearby import NearbyClinicView
+from .schedule_api import ClinicScheduleExceptionsView, ClinicScheduleRulesView, ClinicSlotBlockView
 
 
 app_name = "appointments"
 
 
 urlpatterns = [
+    path(
+        "clinics/<uuid:clinic_id>/schedule/exceptions/",
+        ClinicScheduleExceptionsView.as_view(),
+        name="clinic-schedule-exceptions",
+    ),
+    path(
+        "clinics/<uuid:clinic_id>/schedule/slots/<uuid:slot_id>/block/",
+        ClinicSlotBlockView.as_view(),
+        name="clinic-schedule-slot-block",
+    ),
+    path(
+        "clinics/<uuid:clinic_id>/schedule/rules/",
+        ClinicScheduleRulesView.as_view(),
+        name="clinic-schedule-rules",
+    ),
     path("nearby-clinics/", NearbyClinicView.as_view(), name="nearby-clinics"),
     path("providers/", PublicProviderListView.as_view(), name="provider-list"),
     path(

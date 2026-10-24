@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.urls import include, path
+from apps.accounts.admin_login import admin_login
 
 urlpatterns = [
     path("api/v1/clinics/", include("apps.clinics.urls")),
@@ -10,6 +11,7 @@ urlpatterns = [
     path("api/v1/onboarding/", include("apps.onboarding.urls")),
     path("api/v1/dashboard/", include("apps.dashboard.urls")),
     path("api/v1/operations/", include("apps.operations.urls")),
+    path("admin/login/", admin_login),
     path("admin/", admin.site.urls),
     path(
         "health/",

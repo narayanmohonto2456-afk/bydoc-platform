@@ -53,6 +53,8 @@ def create_challenge(user, purpose, channel, destination):
 def consume_challenge(user, purpose, channel, destination, code):
     valid = False
     with transaction.atomic():
+        # Match recovery and issuance lock ordering so reset cannot race consumption.
+        User.objects.select_for_update().get(pk=user.pk)
         challenge = OtpChallenge.objects.select_for_update().filter(
             user=user, purpose=purpose, channel=channel, destination=destination,
             used_at__isnull=True,
@@ -100,8 +102,12 @@ def deliver_otp(challenge):
     boto3.client("pinpoint-sms-voice-v2", region_name=settings.AWS_SMS_REGION).send_text_message(**options)
 
 
-def confirm_phone(user, code):
-    number = User.objects.values_list("phone_number", flat=True).get(pk=user.pk)
+@transaction.atomic
+def confirm_phone(user, code, current_password):
+    user = User.objects.select_for_update().get(pk=user.pk)
+    if not user.check_password(current_password):
+        raise ValidationError({"current_password": "Current password is incorrect."})
+    number = user.phone_number
     if not number:
         raise ValidationError({"phone_number": "Add a phone number to your profile first."})
     consume_challenge(
